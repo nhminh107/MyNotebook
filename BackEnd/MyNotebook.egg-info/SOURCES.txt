@@ -1,0 +1,9 @@
+pyproject.toml
+MyNotebook.egg-info/PKG-INFO
+MyNotebook.egg-info/SOURCES.txt
+MyNotebook.egg-info/dependency_links.txt
+MyNotebook.egg-info/requires.txt
+MyNotebook.egg-info/top_level.txt
+app/__init__.py
+app/database/sql_manager.py
+app/database/sql_models.py

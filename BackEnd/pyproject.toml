@@ -1,0 +1,11 @@
+[project]
+name="MyNotebook"
+version="0.1"
+
+dependencies = [
+    "faiss-cpu",
+    "langchain",
+    "langchain-core",
+    "langchain-community",
+    "pydantic",
+]

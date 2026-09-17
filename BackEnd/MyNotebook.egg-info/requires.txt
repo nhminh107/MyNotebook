@@ -1,0 +1,5 @@
+faiss-cpu
+langchain
+langchain-core
+langchain-community
+pydantic

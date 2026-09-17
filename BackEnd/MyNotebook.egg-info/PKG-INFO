@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: MyNotebook
+Version: 0.1
+Requires-Dist: faiss-cpu
+Requires-Dist: langchain
+Requires-Dist: langchain-core
+Requires-Dist: langchain-community
+Requires-Dist: pydantic
