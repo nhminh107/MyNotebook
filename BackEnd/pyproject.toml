@@ -10,4 +10,6 @@ dependencies = [
     "pydantic",
     "supabase>=2.31.0",
     "python-dotenv>=1.2.3",
+    "pymupdf>=1.28.2",
+    "docx>=0.2.4",
 ]
