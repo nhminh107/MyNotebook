@@ -1,16 +1,16 @@
 from pydantic import BaseModel
 
-class User: 
+class User(BaseModel): 
     user_id: str
     user_name: str
     user_pass: str
 
-class Document: 
+class Document(BaseModel): 
     document_id: str 
     user_id: str 
     type: str
 
-class Chunk: 
+class Chunk(BaseModel): 
     chunk_id: str 
     document_id: str 
     content: str

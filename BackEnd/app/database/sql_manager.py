@@ -16,7 +16,7 @@ class Supabase_Manager():
     def insert_user(self, user: User): 
         data = {
             "user_id": user.user_id, 
-            "user_pass": user.user_pass, 
+            "user_password": user.user_pass, 
             "user_name": user.user_name
         }
 
