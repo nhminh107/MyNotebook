@@ -1,6 +1,5 @@
 import pymupdf
 from abc import ABC, abstractmethod
-from docx import Document
 from pathlib import Path
 
 class BaseExtractor(ABC):
@@ -24,6 +23,8 @@ class PDFExtractor(BaseExtractor):
 
 class WordExtractor(BaseExtractor):
     def extract(self, file_path: str):
+        from docx import Document
+
         doc = Document(file_path)
 
         text = "\n".join(
