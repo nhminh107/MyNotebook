@@ -1,7 +1,7 @@
 import pymupdf
 from abc import ABC, abstractmethod
 from pathlib import Path
-
+from BackEnd.app.doc_extractor.texts_chunking import chunking
 class BaseExtractor(ABC):
     @abstractmethod
     def extract(self, file_path: str):
@@ -9,14 +9,15 @@ class BaseExtractor(ABC):
 
 class PDFExtractor(BaseExtractor):
     def extract(self, file_path):
-        doc = pymupdf.open(file_path)
-
         pages = []
-        for page_num, page in enumerate(doc):
-            pages.append({
-                "page": page_num + 1,
-                "text": page.get_text("text")
-            })
+        with pymupdf.open(file_path) as doc:
+            for page_num, page in enumerate(doc):
+                text = page.get_text("text")
+                chunked_texts = chunking(text)
+                pages.append({
+                    "page": page_num + 1,
+                    "texts": chunked_texts
+                })
 
         return pages
 
@@ -31,10 +32,10 @@ class WordExtractor(BaseExtractor):
             paragraph.text
             for paragraph in doc.paragraphs
         )
-
+        chunked_texts = chunking(text)
         return [{
             "page": None,
-            "text": text
+            "text": chunked_texts
         }]
 
 class TextExtractor(BaseExtractor):
@@ -44,9 +45,10 @@ class TextExtractor(BaseExtractor):
         with open(file_path, "r", encoding="utf-8") as f:
             text = f.read()
 
+        chunked_texts = chunking(text)
         return [{
             "page": None,
-            "text": text
+            "text": chunked_texts
         }]
 
 class ExtractorFactory:
