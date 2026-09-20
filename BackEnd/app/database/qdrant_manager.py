@@ -57,7 +57,7 @@ class QDrant:
             )
             return 200
         except Exception as e:
-            return e
+            raise e
 
     def search(self, user_id:str, query_embedding, limit = 10, doc_id:str=None): 
         if doc_id: 

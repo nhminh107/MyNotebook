@@ -38,17 +38,42 @@ class Pipeline:
         
                 return pages
                 """
-        for page in document_chunks: 
-            chunks = []
-            for text in page["texts"]: 
-                chunk = Chunk(chunk_id=str(uuid.uuid4()), document_id=doc.document_id, content=text)
+        chunks = []
+
+        for page in document_chunks:
+            for text in page["texts"]:
+                chunk = Chunk(
+                    chunk_id=str(uuid.uuid4()),
+                    document_id=doc.document_id,
+                    content=text,
+                )
                 chunks.append(chunk)
 
-            self.sql.insert_chunks(chunks=chunks)
-            texts = [chunk.content for chunk in chunks]
-            embedding_vector = self.embedding_model.embed_passages(texts=texts)
+                if len(chunks) >= 200:
+                    self.sql.insert_chunks(chunks=chunks)
 
-            self.qdrant.add(embedding_vecs=embedding_vector, user=user_id, doc=doc)
+                    texts = [chunk.content for chunk in chunks]
+                    embedding_vectors = self.embedding_model.embed_passages(texts=texts)
+
+                    self.qdrant.add(
+                        embedding_vecs=embedding_vectors,
+                        user=user_id,
+                        doc=doc,
+                    )
+
+                    chunks = []
+
+        if chunks:
+            self.sql.insert_chunks(chunks=chunks)
+
+            texts = [chunk.content for chunk in chunks]
+            embedding_vectors = self.embedding_model.embed_passages(texts=texts)
+
+            self.qdrant.add(
+                embedding_vecs=embedding_vectors,
+                user=user_id,
+                doc=doc,
+            )
 
 
 
