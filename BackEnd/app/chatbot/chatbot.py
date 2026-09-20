@@ -30,6 +30,13 @@ class Chatbot:
         <|assistant|>
         """
 
+        self._convert_prompt = """Use the conversation summary to convert user's prompt. The converted prompt must be clearly, useful for the LLM. 
+        For example, user prompt: "Nó nhằm mục đích gì trong hệ thống RAG", in the conversation summary have information about "vector database", 
+        so that converted prompt should be: "VectorDB nhằm mục đích gì trong hệ thống RAG".
+        User prompt: {user_prompt}
+        Conversation summary: {chat_history}"""
+
+
         self._prompt_template = PromptTemplate(
             template=self._system_prompt,
             input_variables=["user_prompt", "info"]
@@ -38,6 +45,11 @@ class Chatbot:
         self._summary_template = PromptTemplate(
             template=self._summary_prompt,
             input_variables=["new_lines", "summary"]
+        )
+
+        self._convert_template = PromptTemplate(
+            template=self._convert_prompt,
+            input_variables=["user_prompt", "chat_history"]
         )
         self._llm = ChatOpenAI(
             model="deepseek-4.1",
@@ -53,6 +65,11 @@ class Chatbot:
             output_key="text",
             prompt=self._summary_template
         )
+        self._convert_chain = LLMChain(
+            prompt=self._convert_template,
+            llm=self._llm,
+            output_key="converted_query",
+        )
 
         self.llm_chain = LLMChain(
             prompt=self._prompt_template,
@@ -61,11 +78,34 @@ class Chatbot:
             memory=self._memory
         )
 
-    def invoke(self, user_prompt: str, data: str):
+    def convert_query(self, user_prompt: str) -> str:
+        chat_history = self._memory.load_memory_variables({})["chat_history"]
+        if not chat_history:
+            return user_prompt
+        result = self._convert_chain.invoke(
+            {
+                "user_prompt": user_prompt,
+                "chat_history": chat_history,
+            }
+        )
+        return result["converted_query"].strip()
+    
+    def invoke(self, user_prompt: str, data: str, mode: int = 0):
+        # Mode = 1: Convert query
+        if mode == 0: 
+            payload = {
+                "user_prompt": user_prompt, 
+                "info": data
+            }
+            result = self.llm_chain.invoke(payload)
+            return result['text']
+
+        converted_query = self.convert_query(user_prompt)
         payload = {
-            "user_prompt": user_prompt, 
+            "user_prompt": self.convert_query, 
             "info": data
         }
+
         result = self.llm_chain.invoke(payload)
         return result['text']
 
