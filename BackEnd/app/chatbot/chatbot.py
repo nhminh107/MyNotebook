@@ -43,7 +43,8 @@ class Chatbot:
             model="deepseek-4.1",
             temperature=0.1,
             base_url="https://api.mintrouter.ai/v1",
-            api_key=MINTROUTE_API
+            api_key=MINTROUTE_API,
+            streaming=True
         )
         self._memory = ConversationSummaryMemory(
             llm=self._llm, 
