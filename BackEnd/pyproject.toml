@@ -16,4 +16,8 @@ dependencies = [
     "sentence-transformers>=5.2.0",
     "transformers>=5.17.0",
     "qdrant-client>=1.19.1",
+    "fastapi>=0.141.1",
+    "uvicorn>=0.53.0",
+    "bcrypt>=5.0.0",
+    "python-jose>=3.5.0",
 ]

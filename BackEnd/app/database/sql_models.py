@@ -14,3 +14,11 @@ class Chunk(BaseModel):
     chunk_id: str 
     document_id: str 
     content: str
+
+class Register(BaseModel):
+    user_name:str
+    password: str
+
+class Login(BaseModel):
+    user_name:str
+    password:str
