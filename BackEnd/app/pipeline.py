@@ -1,13 +1,20 @@
-import BackEnd.app.CONFIG
-from BackEnd.app.database.sql_manager import Supabase_Manager
-from BackEnd.app.database.qdrant_manager import QDrant
-from BackEnd.app.text_input.Embedding import EmbeddingModel
-from BackEnd.app.doc_extractor.extractor import (ExtractorFactory, PDFExtractor, WordExtractor
-                                                 , TextExtractor, BaseExtractor)
-from BackEnd.app.database.sql_models import User, Document, Chunk
-import uuid
-from BackEnd.app.chatbot.chatbot import Chatbot
+from collections.abc import Iterator
 from pathlib import Path
+import uuid
+
+import BackEnd.app.CONFIG
+from BackEnd.app.chatbot.chatbot import Chatbot
+from BackEnd.app.database.qdrant_manager import QDrant
+from BackEnd.app.database.sql_manager import Supabase_Manager
+from BackEnd.app.database.sql_models import Chunk, Document, User
+from BackEnd.app.doc_extractor.extractor import (
+    BaseExtractor,
+    ExtractorFactory,
+    PDFExtractor,
+    TextExtractor,
+    WordExtractor,
+)
+from BackEnd.app.text_input.Embedding import EmbeddingModel
 
 class Pipeline:
     def __init__(self, sql: Supabase_Manager, qdrant: QDrant, embedding_model: EmbeddingModel, chatbot: Chatbot = None):
@@ -84,3 +91,14 @@ class Pipeline:
         query_retrieval = self.qdrant.search(user_id=user_id, query_embedding=query_embedding)
         result = self.chatbot.invoke(user_prompt=user_query, data=query_retrieval)
         return result
+
+    def query_stream(self, user_id: str, user_query: str) -> Iterator[str]:
+        query_embedding = self.embedding_model.embed_query(user_query)
+        query_retrieval = self.qdrant.search(
+            user_id=user_id,
+            query_embedding=query_embedding,
+        )
+        yield from self.chatbot.stream(
+            user_prompt=user_query,
+            data=query_retrieval,
+        )
