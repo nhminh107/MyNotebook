@@ -36,14 +36,24 @@ class Supabase_Manager():
         )
         return response.data
 
-    def insert_chunks(self, chunk: Chunk):
-        data = {
-            "chunk_id": chunk.chunk_id, 
-            "document_id": chunk.document_id, 
-            "content": chunk.content
-        }
+    def insert_chunks(self, chunks: list[Chunk]):
+        if not chunks:
+            return []
+
+        data = [
+            {
+                "chunk_id": chunk.chunk_id,
+                "document_id": chunk.document_id,
+                "content": chunk.content,
+            }
+            for chunk in chunks
+        ]
 
         response = (
-            self.supabase.table("chunks").insert(data).execute()
+            self.supabase
+            .table("chunks")
+            .insert(data)
+            .execute()
         )
+
         return response.data
