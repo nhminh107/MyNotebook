@@ -32,18 +32,17 @@ class QDrant:
                     is_tenant=True,
                 ),
             )
-    def add(self, embedding_vecs, user: str, doc: Document): 
-        metadata = {
-            "user_id": user, 
-            "document_id": doc.document_id
-        }
-         
+    def add(self, embedding_vecs, texts: list[str], user: str, doc: Document):
         ids = []
         payloads = []
 
-        for i in range(len(embedding_vecs)): 
+        for text in texts:
             ids.append(str(uuid.uuid4()))
-            payloads.append(metadata)
+            payloads.append({
+                "user_id": user,
+                "document_id": doc.document_id,
+                "content": text,
+            })
 
         points = Batch(
             ids=ids, 
@@ -59,9 +58,9 @@ class QDrant:
         except Exception as e:
             raise e
 
-    def search(self, user_id:str, query_embedding, limit = 10, doc_id:str=None): 
+    def search(self, user_id: str, query_embedding, limit: int = 10, doc_id: str = None) -> str:
         if doc_id: 
-            return self.client.query_points(
+            result = self.client.query_points(
                 collection_name="user_documents",
                 query=query_embedding, 
                 query_filter=Filter(
@@ -80,7 +79,7 @@ class QDrant:
                 limit=limit
             )
         else: 
-            return self.client.query_points(
+            result = self.client.query_points(
                 collection_name="user_documents",
                 query=query_embedding, 
                 query_filter=Filter(
@@ -95,6 +94,12 @@ class QDrant:
                 limit=limit
             )
 
-
-
-    
+        contents = [
+            point.payload["content"]
+            for point in result.points
+            if point.payload and "content" in point.payload
+        ]
+        return "\n\n".join(
+            f"{index}. {content}"
+            for index, content in enumerate(contents, start=1)
+        )
