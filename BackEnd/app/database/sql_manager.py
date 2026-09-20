@@ -57,3 +57,20 @@ class Supabase_Manager():
         )
 
         return response.data
+
+    def select_user(self, user_id: str):
+        response =(self.supabase.table("user").select("*").eq("user_id",user_id).execute())
+        return response.data
+
+    def select_document(self, document_id:str):
+        response=(self.supabase.table("document").select("*").eq("document_id", document_id).execute())
+        return response.data
+
+    def select_document_by_user(self, user_id:str):
+        response= (self.supabase.table("document").select("*").eq("user_id", user_id).execute())
+        return response.data
+
+    def select_chunk_by_document(self, document_id:str):
+        response=(self.supabase.table("chunks").select("*").eq("document_id",document_id).execute())
+        return response.data
+    
