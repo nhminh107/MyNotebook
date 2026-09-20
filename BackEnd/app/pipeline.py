@@ -6,13 +6,15 @@ from BackEnd.app.doc_extractor.extractor import (ExtractorFactory, PDFExtractor,
                                                  , TextExtractor, BaseExtractor)
 from BackEnd.app.database.sql_models import User, Document, Chunk
 import uuid
+from BackEnd.app.chatbot.chatbot import Chatbot
 from pathlib import Path
 
 class Pipeline:
-    def __init__(self, sql: Supabase_Manager, qdrant: QDrant, embedding_model: EmbeddingModel):
+    def __init__(self, sql: Supabase_Manager, qdrant: QDrant, embedding_model: EmbeddingModel, chatbot: Chatbot = None):
         self.sql = sql
         self.qdrant = qdrant
         self.embedding_model = embedding_model
+        self.chatbot = chatbot
 
     def insert_doc_pipeline(self, doc_path: str, user_id: str): 
 
@@ -57,6 +59,7 @@ class Pipeline:
 
                     self.qdrant.add(
                         embedding_vecs=embedding_vectors,
+                        texts=texts,
                         user=user_id,
                         doc=doc,
                     )
@@ -71,10 +74,13 @@ class Pipeline:
 
             self.qdrant.add(
                 embedding_vecs=embedding_vectors,
+                texts=texts,
                 user=user_id,
                 doc=doc,
             )
 
-
-
-
+    def query(self, user_id: str, user_query: str):
+        query_embedding = self.embedding_model.embed_query(user_query)
+        query_retrieval = self.qdrant.search(user_id=user_id, query_embedding=query_embedding)
+        result = self.chatbot.invoke(user_prompt=user_query, data=query_retrieval)
+        return result

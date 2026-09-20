@@ -16,4 +16,5 @@ dependencies = [
     "sentence-transformers>=5.2.0",
     "transformers>=5.17.0",
     "qdrant-client>=1.19.1",
+    "langchain-openai>=1.6.2",
 ]
