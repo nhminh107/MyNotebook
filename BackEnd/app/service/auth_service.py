@@ -37,7 +37,7 @@ class AuthService:
 
         password_valid=bcrypt.checkpw(
             request.password.encode("utf-8"),
-            user["password"].encode("utf-8"),
+            user["user_password"].encode("utf-8"),
         )
 
         if not password_valid:

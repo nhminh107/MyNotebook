@@ -1,9 +1,12 @@
-from langchain_core.prompts import PromptTemplate
-from langchain_classic.memory import ConversationSummaryMemory
+from collections.abc import Iterator
 import os
+
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
 from langchain_classic.chains.llm import LLMChain
+from langchain_classic.memory import ConversationSummaryMemory
+from langchain_core.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI
+
 load_dotenv()
 
 MINTROUTE_API = os.getenv("LLM_API_KEY")
@@ -15,6 +18,7 @@ class Chatbot:
         The retrieval information is ordered from most relevant to least relevant.
         If the information is missing or insufficient, clearly say so.
         Do not make claims that are not supported by the provided information.
+        Format the answer as clear Markdown when structure improves readability.
 
         Conversation summary:{chat_history}
         The user's question: {user_prompt}
@@ -109,6 +113,31 @@ class Chatbot:
         result = self.llm_chain.invoke(payload)
         return result['text']
 
+    def stream(self, user_prompt: str, data: str) -> Iterator[str]:
+        """Yield response text chunks and save the completed turn to memory."""
+        memory_variables = self._memory.load_memory_variables({})
+        prompt = self._prompt_template.format_prompt(
+            user_prompt=user_prompt,
+            info=data,
+            chat_history=memory_variables.get("chat_history", ""),
+        )
+        answer_parts: list[str] = []
+
+        for chunk in self._llm.stream(prompt):
+            text = str(chunk.text)
+            if not text:
+                continue
+
+            answer_parts.append(text)
+            yield text
+
+        answer = "".join(answer_parts)
+        if answer:
+            self._memory.save_context(
+                {"user_prompt": user_prompt},
+                {"text": answer},
+            )
+
 
 if __name__ == "__main__": 
     chatbot = Chatbot()
@@ -118,6 +147,5 @@ if __name__ == "__main__":
     """
     ans = chatbot.invoke(user_prompt=user_prompt, data=data)
     print(ans)
-
 
 

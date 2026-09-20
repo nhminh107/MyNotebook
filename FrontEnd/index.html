@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Notebook giúp tải tài liệu và hỏi đáp trực tiếp từ nội dung của bạn."
+    />
+    <title>Notebook | Hỏi đáp tài liệu</title>
+    <link rel="stylesheet" href="/static/styles.css?v=20260920-4" />
+    <script src="/static/app.js?v=20260920-4" defer></script>
+  </head>
+  <body>
+    <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
+      <div class="auth-intro">
+        <a class="brand brand-on-blue" href="/" aria-label="Notebook, trang chủ">
+          <span class="brand-mark" aria-hidden="true">N</span>
+          <span>Notebook</span>
+        </a>
+
+        <div class="auth-intro-copy">
+          <p class="section-label">Không gian học tập cá nhân</p>
+          <h1>Đọc tài liệu nhanh hơn bằng hội thoại.</h1>
+          <p>
+            Tải PDF, Word hoặc TXT. Đặt câu hỏi và nhận câu trả lời dựa trên
+            chính nội dung bạn cung cấp.
+          </p>
+        </div>
+
+        <p class="auth-note">Tài liệu được tách riêng theo tài khoản người dùng.</p>
+      </div>
+
+      <div class="auth-panel">
+        <div class="auth-form-wrap">
+          <div class="auth-tabs" role="tablist" aria-label="Tài khoản">
+            <button
+              class="auth-tab is-active"
+              id="login-tab"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="auth-form"
+              data-auth-mode="login"
+            >
+              Đăng nhập
+            </button>
+            <button
+              class="auth-tab"
+              id="register-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="auth-form"
+              data-auth-mode="register"
+            >
+              Tạo tài khoản
+            </button>
+          </div>
+
+          <div class="auth-heading">
+            <h2 id="auth-title">Chào mừng trở lại</h2>
+            <p id="auth-description">Đăng nhập để tiếp tục với tài liệu của bạn.</p>
+          </div>
+
+          <form class="auth-form" id="auth-form" novalidate>
+            <div class="field-group">
+              <label for="user-name">Tên đăng nhập</label>
+              <input
+                id="user-name"
+                name="user_name"
+                type="text"
+                autocomplete="username"
+                required
+                minlength="2"
+                placeholder="Nhập tên đăng nhập"
+              />
+            </div>
+
+            <div class="field-group">
+              <label for="password">Mật khẩu</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                required
+                minlength="4"
+                placeholder="Nhập mật khẩu"
+              />
+            </div>
+
+            <p class="form-error" id="auth-error" role="alert"></p>
+            <button class="primary-button auth-submit" id="auth-submit" type="submit">
+              Đăng nhập
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <div class="app-shell is-hidden" id="app-shell">
+      <div class="sidebar-scrim" id="sidebar-scrim" aria-hidden="true"></div>
+
+      <aside class="sidebar" id="sidebar" aria-label="Điều hướng chính">
+        <div class="sidebar-header">
+          <a class="brand brand-on-blue" href="/" aria-label="Notebook, trang chủ">
+            <span class="brand-mark" aria-hidden="true">N</span>
+            <span>Notebook</span>
+          </a>
+          <button class="text-button mobile-only" id="close-sidebar" type="button">
+            Đóng
+          </button>
+        </div>
+
+        <button class="new-chat-button" id="new-chat-button" type="button">
+          <span aria-hidden="true">+</span>
+          Cuộc trò chuyện mới
+        </button>
+
+        <section class="document-section" aria-labelledby="documents-heading">
+          <div class="sidebar-section-header">
+            <h2 id="documents-heading">Tài liệu</h2>
+            <span id="document-count">0</span>
+          </div>
+
+          <label class="upload-button" for="file-input">
+            <span>Tải tài liệu lên</span>
+            <span class="upload-types">PDF, DOCX, TXT</span>
+          </label>
+          <input
+            class="visually-hidden"
+            id="file-input"
+            type="file"
+            accept=".pdf,.docx,.txt"
+          />
+
+          <div class="upload-status is-hidden" id="upload-status" aria-live="polite"></div>
+
+          <ul class="document-list" id="document-list">
+            <li class="document-empty" id="document-empty">
+              Chưa có tài liệu trong phiên này.
+            </li>
+          </ul>
+        </section>
+
+        <div class="sidebar-account">
+          <div class="account-copy">
+            <span class="account-avatar" id="account-avatar" aria-hidden="true">N</span>
+            <span>
+              <strong id="account-name">Người dùng</strong>
+              <small>Đang đăng nhập</small>
+            </span>
+          </div>
+          <button class="logout-button" id="logout-button" type="button">Đăng xuất</button>
+        </div>
+      </aside>
+
+      <main class="chat-layout">
+        <header class="chat-header">
+          <button class="menu-button mobile-only" id="open-sidebar" type="button">
+            Menu
+          </button>
+          <div>
+            <p class="chat-title">Hỏi đáp tài liệu</p>
+            <p class="chat-subtitle" id="chat-context">Sẵn sàng nhận câu hỏi</p>
+          </div>
+          <a class="docs-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+        </header>
+
+        <div class="chat-scroll" id="chat-scroll">
+          <section class="empty-state" id="empty-state" aria-labelledby="empty-title">
+            <span class="empty-mark" aria-hidden="true">N</span>
+            <h1 id="empty-title">Bạn muốn tìm hiểu điều gì?</h1>
+            <p>
+              Tải tài liệu lên, sau đó hỏi về nội dung, khái niệm hoặc phần cần tóm tắt.
+            </p>
+
+            <div class="prompt-suggestions" aria-label="Câu hỏi gợi ý">
+              <button type="button" data-prompt="Tóm tắt những ý chính trong tài liệu.">
+                Tóm tắt những ý chính
+              </button>
+              <button type="button" data-prompt="Giải thích khái niệm quan trọng nhất trong tài liệu.">
+                Giải thích khái niệm quan trọng
+              </button>
+              <button type="button" data-prompt="Tạo danh sách câu hỏi ôn tập từ tài liệu.">
+                Tạo câu hỏi ôn tập
+              </button>
+            </div>
+          </section>
+
+          <div class="message-list" id="message-list" aria-live="polite"></div>
+        </div>
+
+        <div class="composer-area">
+          <form class="composer" id="chat-form">
+            <label class="visually-hidden" for="question-input">Nhập câu hỏi</label>
+            <textarea
+              id="question-input"
+              name="question"
+              rows="1"
+              maxlength="4000"
+              placeholder="Hỏi về tài liệu của bạn"
+              required
+            ></textarea>
+            <button class="send-button" id="send-button" type="submit">Gửi</button>
+          </form>
+          <p class="composer-note" id="composer-note">
+            Câu trả lời được tạo từ dữ liệu retrieval. Hãy kiểm tra lại thông tin quan trọng.
+          </p>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
