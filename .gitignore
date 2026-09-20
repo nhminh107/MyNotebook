@@ -61,3 +61,6 @@ Thumbs.db
 *.temp
 *.log
 /markdown_note
+.agents
+.codex
+.pytest_cache
