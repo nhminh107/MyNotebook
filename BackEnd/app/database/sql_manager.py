@@ -73,4 +73,8 @@ class Supabase_Manager():
     def select_chunk_by_document(self, document_id:str):
         response=(self.supabase.table("chunks").select("*").eq("document_id",document_id).execute())
         return response.data
+
+    def select_user_by_name(self, user_name:str):
+        response=(self.supabase.table("user").select("*").eq("user_name", user_name).execute())
+        return response.data
     
