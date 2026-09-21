@@ -17,6 +17,7 @@ from BackEnd.app.text_input.Embedding import EmbeddingModel
 
 class RetrievalRequest(BaseModel):
     user_id: str = Field(min_length=1)
+    chat_history: str = Field(min_length=1)
     user_query: str = Field(min_length=1)
 
 
@@ -51,7 +52,7 @@ def stream_retrieval_events(
     yield format_sse_event("done", {})
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=5)
 def get_pipeline() -> Pipeline:
     return Pipeline(
         sql=Supabase_Manager(),
