@@ -23,6 +23,7 @@ class AuthService:
         return {
             "user_id":user.user_id,
             "user_name": user.user_name,
+            "plan": user.plan,
         }
 
     def login(self, request:Login):
@@ -46,4 +47,5 @@ class AuthService:
         return {
             "user_id": user["user_id"],
             "user_name": user["user_name"],
+            "plan": user.get("plan") or "Free",
         }

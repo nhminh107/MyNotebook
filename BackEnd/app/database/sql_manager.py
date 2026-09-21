@@ -17,7 +17,8 @@ class Supabase_Manager():
         data = {
             "user_id": user.user_id, 
             "user_password": user.user_pass, 
-            "user_name": user.user_name
+            "user_name": user.user_name,
+            "plan": user.plan
         }
 
         response = (

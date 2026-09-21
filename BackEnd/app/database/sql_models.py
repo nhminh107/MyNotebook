@@ -4,6 +4,7 @@ class User(BaseModel):
     user_id: str
     user_name: str
     user_pass: str
+    plan: str = "Free"
 
 class Document(BaseModel): 
     document_id: str 
