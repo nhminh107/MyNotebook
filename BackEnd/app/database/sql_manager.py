@@ -58,6 +58,72 @@ class Supabase_Manager():
 
         return response.data
 
+    def init_chat_history(self, chat_id: str, user_id: str):
+        data = {
+            "chat_id": chat_id,
+            "user_id": user_id,
+            "conversation": [
+                {
+                    "user": "Hi",
+                    "chatbot": "Good mornig! How can I help you ?"
+                }
+            ]
+        }
+
+        response = (
+            self.supabase.table("chat_history").insert(data).execute()
+        )
+        return response.data
+
+    def update_chat_history(self, chat_id: str, user_message: str, chatbot_message: str, chat_summary: str):
+        response = (
+            self.supabase.table("chat_history")
+            .select("conversation")
+            .eq("chat_id", chat_id)
+            .single()
+            .execute()
+        )
+
+        conversation = response.data["conversation"] or []
+        conversation.append({
+            "user": user_message,
+            "chatbot": chatbot_message
+        })
+
+        data = {
+            "conversation": conversation,
+            "summary": chat_summary
+        }
+
+
+        try:
+            response = (
+                self.supabase.table("chat_history").update(data).eq("chat_id", chat_id).execute()
+            )
+            return 200
+        except Exception as e:
+            raise e
+
+    def delete_document(self, doc_id: str):
+        chunks_response = (
+            self.supabase.table("chunks")
+            .delete()
+            .eq("document_id", doc_id)
+            .execute()
+        )
+
+        document_response = (
+            self.supabase.table("document")
+            .delete()
+            .eq("document_id", doc_id)
+            .execute()
+        )
+
+        return {
+            "document": document_response.data,
+            "chunks": chunks_response.data
+        }
+
     def select_user(self, user_id: str):
         response =(self.supabase.table("user").select("*").eq("user_id",user_id).execute())
         return response.data
@@ -77,4 +143,3 @@ class Supabase_Manager():
     def select_user_by_name(self, user_name:str):
         response=(self.supabase.table("user").select("*").eq("user_name", user_name).execute())
         return response.data
-    
