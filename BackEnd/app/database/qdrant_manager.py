@@ -32,7 +32,7 @@ class QDrant:
                     is_tenant=True,
                 ),
             )
-    def add(self, embedding_vecs, texts: list[str], user: str, doc: Document):
+    def add(self, embedding_vecs, texts: list[str], user: str, doc: Document, chat_id: str):
         ids = []
         payloads = []
 
@@ -42,6 +42,7 @@ class QDrant:
                 "user_id": user,
                 "document_id": doc.document_id,
                 "content": text,
+                "chat_id": chat_id
             })
 
         points = Batch(
@@ -58,7 +59,7 @@ class QDrant:
         except Exception as e:
             raise e
 
-    def search(self, user_id: str, query_embedding, limit: int = 10, doc_id: str = None) -> str:
+    def search(self, user_id: str, query_embedding, chat_id: str, limit: int = 10, doc_id: str = None) -> str:
         if doc_id: 
             result = self.client.query_points(
                 collection_name="user_documents",
@@ -87,7 +88,12 @@ class QDrant:
                         FieldCondition(
                             key="user_id",
                             match=MatchValue(value=user_id)
+                        ), 
+                        FieldCondition(
+                            key="chat_id", 
+                            match=MatchValue(value=chat_id)
                         )
+                        
                     ]
                 ), 
                 search_params=SearchParams(hnsw_ef=128, exact=False),
