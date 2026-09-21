@@ -8,8 +8,8 @@
       content="Notebook giúp tải tài liệu và hỏi đáp trực tiếp từ nội dung của bạn."
     />
     <title>Notebook | Hỏi đáp tài liệu</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260920-4" />
-    <script src="/static/app.js?v=20260920-4" defer></script>
+    <link rel="stylesheet" href="/static/styles.css?v=20260921-1" />
+    <script src="/static/app.js?v=20260921-1" defer></script>
   </head>
   <body>
     <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
@@ -117,6 +117,16 @@
           <span aria-hidden="true">+</span>
           Cuộc trò chuyện mới
         </button>
+
+        <section class="chat-history-section" aria-labelledby="chat-history-heading">
+          <div class="sidebar-section-header">
+            <h2 id="chat-history-heading">Lịch sử chat</h2>
+            <span id="chat-count">0</span>
+          </div>
+          <ul class="chat-history-list" id="chat-history-list">
+            <li class="chat-history-empty">Chưa có cuộc trò chuyện.</li>
+          </ul>
+        </section>
 
         <section class="document-section" aria-labelledby="documents-heading">
           <div class="sidebar-section-header">
