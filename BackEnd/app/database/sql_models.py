@@ -10,6 +10,7 @@ class Document(BaseModel):
     user_id: str 
     type: str
     chat_id: str
+    file_name: str = ""
 
 class Chunk(BaseModel): 
     chunk_id: str 

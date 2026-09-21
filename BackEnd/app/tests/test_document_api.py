@@ -20,11 +20,17 @@ class StubPipeline:
 
 class StubUploadPipeline:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, str, str, bytes]] = []
+        self.calls: list[tuple[str, str, str, str, bytes]] = []
 
-    def insert_doc_pipeline(self, doc_path: str, user_id: str, chat_id: str) -> None:
+    def insert_doc_pipeline(
+        self,
+        doc_path: str,
+        user_id: str,
+        chat_id: str,
+        file_name: str,
+    ) -> None:
         path = Path(doc_path)
-        self.calls.append((path.suffix, user_id, chat_id, path.read_bytes()))
+        self.calls.append((path.suffix, user_id, chat_id, file_name, path.read_bytes()))
 
 
 class StubUploadFile:
@@ -44,6 +50,70 @@ def test_only_stream_retrieval_route_is_registered() -> None:
 
     assert "/documents/retrieval" not in routes
     assert routes["/documents/retrieval/stream"] == {"POST"}
+    assert routes["/documents/chats/{user_id}"] == {"GET"}
+    assert routes["/documents/chats/{user_id}/{chat_id}"] == {"GET"}
+
+
+def test_get_chat_histories_returns_user_chats(monkeypatch) -> None:
+    class StubDatabase:
+        def select_chat_histories_by_user(self, user_id: str):
+            assert user_id == "user-001"
+            return [{"chat_id": "chat-001", "conversation": []}]
+
+    monkeypatch.setattr(document_api, "get_database", lambda: StubDatabase())
+
+    response = document_api.get_chat_histories(" user-001 ")
+
+    assert response == {
+        "data": [{"chat_id": "chat-001", "conversation": []}]
+    }
+
+
+def test_get_chat_history_returns_only_chat_documents(monkeypatch) -> None:
+    class StubDatabase:
+        def select_chat_history(self, user_id: str, chat_id: str):
+            assert (user_id, chat_id) == ("user-001", "chat-001")
+            return {
+                "chat_id": chat_id,
+                "conversation": [{"user": "Hello", "chatbot": "Hi"}],
+                "summary": "Greeting",
+            }
+
+        def select_document_by_chat(self, user_id: str, chat_id: str):
+            assert (user_id, chat_id) == ("user-001", "chat-001")
+            return [{
+                "document_id": "doc-001",
+                "chat_id": chat_id,
+                "type": ".pdf",
+                "file_name": "notes.pdf",
+            }]
+
+    monkeypatch.setattr(document_api, "get_database", lambda: StubDatabase())
+
+    response = document_api.get_chat_history("user-001", "chat-001")
+
+    assert response["data"]["chat"]["summary"] == "Greeting"
+    assert response["data"]["documents"] == [
+        {
+            "document_id": "doc-001",
+            "chat_id": "chat-001",
+            "type": ".pdf",
+            "file_name": "notes.pdf",
+        }
+    ]
+
+
+def test_get_chat_history_returns_404_when_missing(monkeypatch) -> None:
+    class StubDatabase:
+        def select_chat_history(self, user_id: str, chat_id: str):
+            return None
+
+    monkeypatch.setattr(document_api, "get_database", lambda: StubDatabase())
+
+    with pytest.raises(HTTPException) as error:
+        document_api.get_chat_history("user-001", "missing-chat")
+
+    assert error.value.status_code == 404
 
 
 def test_retrieval_request_rejects_empty_query() -> None:
@@ -116,7 +186,9 @@ def test_upload_document_accepts_supported_extension(monkeypatch) -> None:
         "user_id": "user-001",
         "chat_id": "chat-001",
     }
-    assert pipeline.calls == [(".txt", "user-001", "chat-001", b"retrieval notes")]
+    assert pipeline.calls == [
+        (".txt", "user-001", "chat-001", "notes.txt", b"retrieval notes")
+    ]
 
 
 def test_upload_document_rejects_unsupported_extension(monkeypatch) -> None:
