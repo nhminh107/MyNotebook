@@ -47,8 +47,15 @@ class StubEmbeddingModel:
 
 
 class StubQdrant:
-    def search(self, user_id: str, query_embedding: list[float], chat_id: str) -> str:
+    def search(
+        self,
+        user_id: str,
+        query_text: str,
+        query_embedding: list[float],
+        chat_id: str,
+    ) -> str:
         assert user_id == "user-001"
+        assert query_text == "Question"
         assert query_embedding == [0.1, 0.2]
         assert chat_id == "chat-001"
         return "Retrieved context"
