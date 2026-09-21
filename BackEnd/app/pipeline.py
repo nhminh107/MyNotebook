@@ -23,7 +23,7 @@ class Pipeline:
         self.embedding_model = embedding_model
         self.chatbot = chatbot
 
-    def insert_doc_pipeline(self, doc_path: str, user_id: str, chat_id: str): 
+    def insert_doc_pipeline(self, doc_path: str, user_id: str, chat_id: str, file_name: str):
 
         if not self.sql.select_chat_history(user_id=user_id, chat_id=chat_id):
             self.sql.init_chat_history(chat_id=chat_id, user_id=user_id)
@@ -32,7 +32,13 @@ class Pipeline:
         base_model = factory.create(doc_path)
 
         extension = Path(doc_path).suffix.lower()
-        doc = Document(document_id=str(uuid.uuid4()), user_id=user_id, type=extension, chat_id=chat_id)
+        doc = Document(
+            document_id=str(uuid.uuid4()),
+            user_id=user_id,
+            type=extension,
+            chat_id=chat_id,
+            file_name=file_name
+        )
         self.sql.insert_document(doc=doc)
 
         document_chunks = base_model.extract(doc_path)

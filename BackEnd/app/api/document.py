@@ -49,10 +49,15 @@ def stream_retrieval_events(
     yield format_sse_event("done", {})
 
 
+@lru_cache(maxsize=1)
+def get_database() -> Supabase_Manager:
+    return Supabase_Manager()
+
+
 @lru_cache(maxsize=5)
 def get_pipeline() -> Pipeline:
     return Pipeline(
-        sql=Supabase_Manager(),
+        sql=get_database(),
         qdrant=QDrant(),
         embedding_model=EmbeddingModel(),
         chatbot=Chatbot(),
@@ -63,6 +68,57 @@ router = APIRouter(
     prefix="/documents",
     tags=["Documents"],
 )
+
+
+@router.get("/chats/{user_id}")
+def get_chat_histories(user_id: str):
+    user_id = user_id.strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID must not be blank.")
+
+    try:
+        chats = get_database().select_chat_histories_by_user(user_id)
+        return {"data": chats}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to load chat history.",
+        ) from exc
+
+
+@router.get("/chats/{user_id}/{chat_id}")
+def get_chat_history(user_id: str, chat_id: str):
+    user_id = user_id.strip()
+    chat_id = chat_id.strip()
+    if not user_id or not chat_id:
+        raise HTTPException(
+            status_code=400,
+            detail="User ID and chat ID must not be blank.",
+        )
+
+    try:
+        database = get_database()
+        chat = database.select_chat_history(user_id=user_id, chat_id=chat_id)
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat history not found.")
+
+        documents = database.select_document_by_chat(
+            user_id=user_id,
+            chat_id=chat_id,
+        )
+        return {
+            "data": {
+                "chat": chat,
+                "documents": documents,
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to load chat history.",
+        ) from exc
 
 
 @router.post("/upload")
@@ -102,7 +158,8 @@ async def upload_document(
         pipeline.insert_doc_pipeline(
             doc_path=temp_path,
             user_id=user_id,
-            chat_id=chat_id
+            chat_id=chat_id,
+            file_name=file.filename
         )
 
         return {

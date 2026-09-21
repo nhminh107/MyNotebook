@@ -26,6 +26,7 @@ def test_insert_doc_pipeline() -> None:
             doc_path=TEST_DOCUMENT_PATH,
             user_id=TEST_USER_ID,
             chat_id=TEST_CHAT_ID,
+            file_name="Hands-On-Large-Language-Models.pdf",
         )
         status = "SUCCESS"
     finally:

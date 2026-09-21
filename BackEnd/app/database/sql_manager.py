@@ -30,7 +30,8 @@ class Supabase_Manager():
             "document_id": doc.document_id, 
             "user_id": doc.user_id, 
             "type": doc.type,
-            "chat_id": doc.chat_id
+            "chat_id": doc.chat_id,
+            "file_name": doc.file_name
         }
         response = (
             self.supabase.table("document").insert(data).execute()
@@ -137,12 +138,32 @@ class Supabase_Manager():
         )
         return response.data[0] if response.data else None
 
+    def select_chat_histories_by_user(self, user_id: str):
+        response = (
+            self.supabase.table("chat_history")
+            .select("chat_id, created_at, conversation")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+        return response.data
+
     def select_document(self, document_id:str):
         response=(self.supabase.table("document").select("*").eq("document_id", document_id).execute())
         return response.data
 
     def select_document_by_user(self, user_id:str):
         response= (self.supabase.table("document").select("*").eq("user_id", user_id).execute())
+        return response.data
+
+    def select_document_by_chat(self, user_id: str, chat_id: str):
+        response = (
+            self.supabase.table("document")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("chat_id", chat_id)
+            .execute()
+        )
         return response.data
 
     def select_chunk_by_document(self, document_id:str):
