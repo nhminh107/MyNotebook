@@ -128,6 +128,14 @@ class Supabase_Manager():
         response =(self.supabase.table("user").select("*").eq("user_id",user_id).execute())
         return response.data
 
+    def select_chat_history(self, user_id: str, chat_id: str): 
+        respone = (self.supabase.table("chat_history").
+                   select("*").
+                   eq("user_id", user_id).
+                   eq("chaT_id", chat_id).
+                   execute()
+                   )
+        return respone.data
     def select_document(self, document_id:str):
         response=(self.supabase.table("document").select("*").eq("document_id", document_id).execute())
         return response.data

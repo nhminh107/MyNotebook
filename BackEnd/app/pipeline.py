@@ -92,13 +92,32 @@ class Pipeline:
         result = self.chatbot.invoke(user_prompt=user_query, data=query_retrieval)
         return result
 
-    def query_stream(self, user_id: str, user_query: str) -> Iterator[str]:
+    def query_stream(self, user_id: str, user_query: str, chat_id: str) -> Iterator[str]:
+        chat_history = self.sql.select_chat_history(
+            chat_id=chat_id,
+            user_id=user_id
+        )
+
         query_embedding = self.embedding_model.embed_query(user_query)
         query_retrieval = self.qdrant.search(
             user_id=user_id,
             query_embedding=query_embedding,
         )
-        yield from self.chatbot.stream(
-            user_prompt=user_query,
-            data=query_retrieval,
+        answer_parts = []
+        for token in self.chatbot.stream(
+            user_prompt=user_query, 
+            data=query_retrieval, 
+            memory=chat_history["summary"]
+        ): 
+            answer_parts.append(token)
+            yield token
+
+        answer = "".join(answer_parts)
+        new_summary = self.chatbot.summarize_conversation(chat_history, user_message=user_query, chatbot_message=answer)
+        
+        self.sql.update_chat_history(
+            chat_id=chat_id,
+            user_message=user_query,
+            chatbot_message=answer,
+            chat_summary=new_summary
         )
