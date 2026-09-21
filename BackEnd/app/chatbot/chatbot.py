@@ -55,6 +55,13 @@ class Chatbot:
             template=self._convert_prompt,
             input_variables=["user_prompt", "chat_history"]
         )
+        self._summary_llm = ChatOpenAI(
+            model="nemotron-3-ultra-free",
+            temperature=0.1,
+            base_url="https://api.mintrouter.ai/v1",
+            api_key=MINTROUTE_API,
+            streaming=True
+        )
         self._llm = ChatOpenAI(
             model="deepseek-4.1",
             temperature=0.1,
@@ -69,6 +76,12 @@ class Chatbot:
             output_key="text",
             prompt=self._summary_template
         )
+
+        self._summary_chain = LLMChain(
+            prompt=self._summary_template, 
+            llm=self._summary_llm,
+            output_key="summary"
+        )
         self._convert_chain = LLMChain(
             prompt=self._convert_template,
             llm=self._llm,
@@ -82,6 +95,16 @@ class Chatbot:
             memory=self._memory
         )
 
+    def summarize_conversation(self, current_summary: str, user_message: str, chatbot_message: str): 
+        new_lines = (
+            f"User: {user_message}\n"
+            f"Chatbot: {chatbot_message}"
+        )
+        result = self._summary_chain.invoke({
+            "summary": current_summary,
+            "new_lines": new_lines
+        })
+        return result["summary"].strip()
     def convert_query(self, user_prompt: str) -> str:
         chat_history = self._memory.load_memory_variables({})["chat_history"]
         if not chat_history:
@@ -94,49 +117,40 @@ class Chatbot:
         )
         return result["converted_query"].strip()
     
-    def invoke(self, user_prompt: str, data: str, mode: int = 0):
+    def invoke(self, user_prompt: str, data: str, memory: str, mode: int = 0):
         # Mode = 1: Convert query
         if mode == 0: 
             payload = {
                 "user_prompt": user_prompt, 
-                "info": data
+                "info": data,
+                "chat_history": memory
             }
             result = self.llm_chain.invoke(payload)
             return result['text']
 
         converted_query = self.convert_query(user_prompt)
         payload = {
-            "user_prompt": self.convert_query, 
-            "info": data
+            "user_prompt": converted_query, 
+            "info": data,
+            "chat_history": memory
         }
 
         result = self.llm_chain.invoke(payload)
         return result['text']
 
-    def stream(self, user_prompt: str, data: str) -> Iterator[str]:
+    def stream(self, user_prompt: str, data: str, memory: str) -> Iterator[str]:
         """Yield response text chunks and save the completed turn to memory."""
-        memory_variables = self._memory.load_memory_variables({})
         prompt = self._prompt_template.format_prompt(
             user_prompt=user_prompt,
             info=data,
-            chat_history=memory_variables.get("chat_history", ""),
+            chat_history=memory
         )
-        answer_parts: list[str] = []
 
         for chunk in self._llm.stream(prompt):
             text = str(chunk.text)
-            if not text:
-                continue
+            if text:
+                yield text
 
-            answer_parts.append(text)
-            yield text
-
-        answer = "".join(answer_parts)
-        if answer:
-            self._memory.save_context(
-                {"user_prompt": user_prompt},
-                {"text": answer},
-            )
 
 
 if __name__ == "__main__": 
@@ -147,5 +161,4 @@ if __name__ == "__main__":
     """
     ans = chatbot.invoke(user_prompt=user_prompt, data=data)
     print(ans)
-
 

@@ -17,12 +17,8 @@ from BackEnd.app.text_input.Embedding import EmbeddingModel
 
 class RetrievalRequest(BaseModel):
     user_id: str = Field(min_length=1)
+    chat_id: str = Field(min_length=1)
     user_query: str = Field(min_length=1)
-
-
-class RetrievalResponse(BaseModel):
-    message: str
-    data: str
 
 
 def format_sse_event(event: str, payload: dict) -> str:
@@ -34,11 +30,13 @@ def stream_retrieval_events(
     pipeline: Pipeline,
     user_id: str,
     user_query: str,
+    chat_id: str
 ) -> Iterator[str]:
     try:
         for token in pipeline.query_stream(
             user_id=user_id,
             user_query=user_query,
+            chat_id=chat_id
         ):
             yield format_sse_event("token", {"content": token})
     except Exception:
@@ -52,9 +50,14 @@ def stream_retrieval_events(
 
 
 @lru_cache(maxsize=1)
+def get_database() -> Supabase_Manager:
+    return Supabase_Manager()
+
+
+@lru_cache(maxsize=5)
 def get_pipeline() -> Pipeline:
     return Pipeline(
-        sql=Supabase_Manager(),
+        sql=get_database(),
         qdrant=QDrant(),
         embedding_model=EmbeddingModel(),
         chatbot=Chatbot(),
@@ -67,9 +70,61 @@ router = APIRouter(
 )
 
 
+@router.get("/chats/{user_id}")
+def get_chat_histories(user_id: str):
+    user_id = user_id.strip()
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID must not be blank.")
+
+    try:
+        chats = get_database().select_chat_histories_by_user(user_id)
+        return {"data": chats}
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to load chat history.",
+        ) from exc
+
+
+@router.get("/chats/{user_id}/{chat_id}")
+def get_chat_history(user_id: str, chat_id: str):
+    user_id = user_id.strip()
+    chat_id = chat_id.strip()
+    if not user_id or not chat_id:
+        raise HTTPException(
+            status_code=400,
+            detail="User ID and chat ID must not be blank.",
+        )
+
+    try:
+        database = get_database()
+        chat = database.select_chat_history(user_id=user_id, chat_id=chat_id)
+        if not chat:
+            raise HTTPException(status_code=404, detail="Chat history not found.")
+
+        documents = database.select_document_by_chat(
+            user_id=user_id,
+            chat_id=chat_id,
+        )
+        return {
+            "data": {
+                "chat": chat,
+                "documents": documents,
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to load chat history.",
+        ) from exc
+
+
 @router.post("/upload")
 async def upload_document(
     user_id: str = Form(...),
+    chat_id: str = Form(...),
     file: UploadFile = File(...),
 ):
     pipeline = get_pipeline()
@@ -103,12 +158,15 @@ async def upload_document(
         pipeline.insert_doc_pipeline(
             doc_path=temp_path,
             user_id=user_id,
+            chat_id=chat_id,
+            file_name=file.filename
         )
 
         return {
             "message": "Document uploaded successfully.",
             "filename": file.filename,
             "user_id": user_id,
+            "chat_id": chat_id,
         }
 
     except Exception as exc:
@@ -122,48 +180,17 @@ async def upload_document(
             Path(temp_path).unlink(missing_ok=True)
 
 
-@router.post("/retrieval", response_model=RetrievalResponse)
-def retrieve_document(
-    request: RetrievalRequest,
-) -> RetrievalResponse:
-    user_id = request.user_id.strip()
-    user_query = request.user_query.strip()
-
-    if not user_id or not user_query:
-        raise HTTPException(
-            status_code=400,
-            detail="User ID and query must not be blank.",
-        )
-
-    try:
-        pipeline = get_pipeline()
-        result = pipeline.query(
-            user_id=user_id,
-            user_query=user_query,
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail="Unable to retrieve document information.",
-        ) from exc
-
-    return RetrievalResponse(
-        message="Retrieval completed successfully.",
-        data=result,
-    )
-
-
 @router.post("/retrieval/stream")
 def stream_retrieve_document(
     request: RetrievalRequest,
 ) -> StreamingResponse:
     user_id = request.user_id.strip()
     user_query = request.user_query.strip()
-
-    if not user_id or not user_query:
+    chat_id = request.chat_id.strip()
+    if not user_id or not chat_id or not user_query:
         raise HTTPException(
             status_code=400,
-            detail="User ID and query must not be blank.",
+            detail="User ID, chat ID and query must not be blank.",
         )
 
     try:
@@ -179,6 +206,7 @@ def stream_retrieve_document(
             pipeline=pipeline,
             user_id=user_id,
             user_query=user_query,
+            chat_id=chat_id
         ),
         media_type="text/event-stream",
         headers={

@@ -50,12 +50,13 @@ class ToolList:
         )
         self.tools.append(search_tool)
 
-    def _qdrant_query_tool(self, query: str, user_id: str, limit: int = 5) -> str:
+    def _qdrant_query_tool(self, query: str, user_id: str, chat_id: str, limit: int = 5) -> str:
         """Return the most relevant passages from the user's documents."""
         query_embedding = self.embedding_model.embed_query(query)
         return self.qdrant.search(
             user_id=user_id,
             query_embedding=query_embedding,
+            chat_id=chat_id,
             limit=limit,
         )
 

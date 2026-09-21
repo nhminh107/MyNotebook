@@ -8,6 +8,7 @@ from BackEnd.app.text_input.Embedding import EmbeddingModel
 
 TEST_DOCUMENT_PATH = "/home/nhminh/Downloads/Hands-On-Large-Language-Models.pdf"
 TEST_USER_ID = "001"
+TEST_CHAT_ID = "chat-001"
 
 
 def test_insert_doc_pipeline() -> None:
@@ -24,6 +25,8 @@ def test_insert_doc_pipeline() -> None:
         pipeline.insert_doc_pipeline(
             doc_path=TEST_DOCUMENT_PATH,
             user_id=TEST_USER_ID,
+            chat_id=TEST_CHAT_ID,
+            file_name="Hands-On-Large-Language-Models.pdf",
         )
         status = "SUCCESS"
     finally:
