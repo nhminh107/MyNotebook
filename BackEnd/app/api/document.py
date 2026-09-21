@@ -35,11 +35,13 @@ def stream_retrieval_events(
     pipeline: Pipeline,
     user_id: str,
     user_query: str,
+    chat_id: str
 ) -> Iterator[str]:
     try:
         for token in pipeline.query_stream(
             user_id=user_id,
             user_query=user_query,
+            chat_id=chat_id
         ):
             yield format_sse_event("token", {"content": token})
     except Exception:
@@ -71,6 +73,7 @@ router = APIRouter(
 @router.post("/upload")
 async def upload_document(
     user_id: str = Form(...),
+    chat_id: str = Form(...),
     file: UploadFile = File(...),
 ):
     pipeline = get_pipeline()
@@ -104,6 +107,7 @@ async def upload_document(
         pipeline.insert_doc_pipeline(
             doc_path=temp_path,
             user_id=user_id,
+            chat_id=chat_id
         )
 
         return {
@@ -160,7 +164,7 @@ def stream_retrieve_document(
 ) -> StreamingResponse:
     user_id = request.user_id.strip()
     user_query = request.user_query.strip()
-
+    chat_id = request.chat_history.strip()
     if not user_id or not user_query:
         raise HTTPException(
             status_code=400,
@@ -180,6 +184,7 @@ def stream_retrieve_document(
             pipeline=pipeline,
             user_id=user_id,
             user_query=user_query,
+            chat_id=chat_id
         ),
         media_type="text/event-stream",
         headers={

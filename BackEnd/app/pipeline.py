@@ -23,13 +23,13 @@ class Pipeline:
         self.embedding_model = embedding_model
         self.chatbot = chatbot
 
-    def insert_doc_pipeline(self, doc_path: str, user_id: str): 
+    def insert_doc_pipeline(self, doc_path: str, user_id: str, chat_id: str): 
 
         factory = ExtractorFactory()
         base_model = factory.create(doc_path)
 
         extension = Path(doc_path).suffix.lower()
-        doc = Document(document_id=str(uuid.uuid4()), user_id=user_id, type=extension)
+        doc = Document(document_id=str(uuid.uuid4()), user_id=user_id, type=extension, chat_id=chat_id)
         self.sql.insert_document(doc=doc)
 
         document_chunks = base_model.extract(doc_path)
@@ -84,6 +84,7 @@ class Pipeline:
                 texts=texts,
                 user=user_id,
                 doc=doc,
+                chat_id=chat_id
             )
 
     def query(self, user_id: str, user_query: str):
@@ -114,7 +115,7 @@ class Pipeline:
 
         answer = "".join(answer_parts)
         new_summary = self.chatbot.summarize_conversation(chat_history, user_message=user_query, chatbot_message=answer)
-        
+
         self.sql.update_chat_history(
             chat_id=chat_id,
             user_message=user_query,
