@@ -1,6 +1,5 @@
 const storageKeys = {
   user: "notebook.currentUser",
-  documents: (userId) => `notebook.documents.${userId}`,
   currentChat: (userId) => `notebook.currentChat.${userId}`,
 };
 
@@ -8,6 +7,7 @@ const state = {
   authMode: "login",
   user: readStorage(storageKeys.user, null),
   chatId: null,
+  chats: [],
   documents: [],
   messages: [],
   isSending: false,
@@ -29,6 +29,8 @@ const elements = {
   accountAvatar: document.querySelector("#account-avatar"),
   logoutButton: document.querySelector("#logout-button"),
   newChatButton: document.querySelector("#new-chat-button"),
+  chatHistoryList: document.querySelector("#chat-history-list"),
+  chatCount: document.querySelector("#chat-count"),
   fileInput: document.querySelector("#file-input"),
   uploadStatus: document.querySelector("#upload-status"),
   documentList: document.querySelector("#document-list"),
@@ -461,8 +463,9 @@ function showApplication() {
   elements.accountAvatar.textContent = state.user.user_name.slice(0, 1) || "N";
   state.chatId = readStorage(storageKeys.currentChat(state.user.user_id), null) || createChatId();
   writeStorage(storageKeys.currentChat(state.user.user_id), state.chatId);
-  state.documents = readStorage(storageKeys.documents(state.user.user_id), []);
+  state.documents = [];
   renderDocuments();
+  initializeChatHistory();
   window.setTimeout(() => elements.questionInput.focus(), 0);
 }
 
@@ -470,11 +473,127 @@ function handleLogout() {
   localStorage.removeItem(storageKeys.user);
   state.user = null;
   state.chatId = null;
+  state.chats = [];
   state.documents = [];
   resetConversation();
   closeSidebar();
   setAuthMode("login");
   showApplication();
+}
+
+function getChatTitle(chat) {
+  const firstTurn = Array.isArray(chat.conversation) ? chat.conversation[0] : null;
+  const firstMessage = firstTurn?.user?.trim();
+  return firstMessage || `Cuộc trò chuyện ${chat.chat_id.slice(0, 8)}`;
+}
+
+function renderChatHistory() {
+  elements.chatHistoryList.replaceChildren();
+  elements.chatCount.textContent = String(state.chats.length);
+
+  if (state.chats.length === 0) {
+    const emptyItem = document.createElement("li");
+    emptyItem.className = "chat-history-empty";
+    emptyItem.textContent = "Chưa có cuộc trò chuyện.";
+    elements.chatHistoryList.append(emptyItem);
+    return;
+  }
+
+  state.chats.forEach((chat) => {
+    const item = document.createElement("li");
+    item.className = "chat-history-item";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.classList.toggle("is-active", chat.chat_id === state.chatId);
+
+    const title = document.createElement("span");
+    title.className = "chat-history-title";
+    title.textContent = getChatTitle(chat);
+
+    const date = document.createElement("span");
+    date.className = "chat-history-date";
+    date.textContent = new Date(chat.created_at).toLocaleString("vi-VN");
+
+    button.append(title, date);
+    button.addEventListener("click", async () => {
+      try {
+        await selectChat(chat.chat_id);
+      } catch (error) {
+        elements.chatContext.textContent = error.message;
+      }
+    });
+    item.append(button);
+    elements.chatHistoryList.append(item);
+  });
+}
+
+function renderConversation() {
+  elements.messageList.replaceChildren();
+
+  if (state.messages.length === 0) {
+    elements.emptyState.classList.remove("is-hidden");
+  } else {
+    elements.emptyState.classList.add("is-hidden");
+    state.messages.forEach((message) => {
+      elements.messageList.append(createMessage(message.role, message.text));
+    });
+  }
+
+  elements.chatContext.textContent = state.documents.length
+    ? `${state.documents.length} tài liệu trong cuộc trò chuyện`
+    : "Sẵn sàng nhận câu hỏi";
+  scrollToLatestMessage();
+}
+
+async function loadChatHistory() {
+  const payload = await apiRequest(
+    `/documents/chats/${encodeURIComponent(state.user.user_id)}`,
+  );
+  state.chats = payload.data || [];
+  renderChatHistory();
+  return state.chats;
+}
+
+async function selectChat(chatId) {
+  const payload = await apiRequest(
+    `/documents/chats/${encodeURIComponent(state.user.user_id)}/${encodeURIComponent(chatId)}`,
+  );
+  const { chat, documents } = payload.data;
+
+  state.chatId = chat.chat_id;
+  writeStorage(storageKeys.currentChat(state.user.user_id), state.chatId);
+  state.documents = (documents || []).map((documentItem) => ({
+    document_id: documentItem.document_id,
+    name: documentItem.file_name || `Tài liệu ${documentItem.document_id.slice(0, 8)}`,
+    type: documentItem.type,
+  }));
+  state.messages = [];
+
+  (chat.conversation || []).forEach((turn) => {
+    state.messages.push({ role: "user", text: turn.user || "" });
+    state.messages.push({ role: "assistant", text: turn.chatbot || "" });
+  });
+
+  renderDocuments();
+  renderConversation();
+  renderChatHistory();
+  closeSidebar();
+}
+
+async function initializeChatHistory() {
+  try {
+    const chats = await loadChatHistory();
+    if (chats.length === 0) {
+      resetConversation();
+      return;
+    }
+
+    const selectedChat = chats.find((chat) => chat.chat_id === state.chatId) || chats[0];
+    await selectChat(selectedChat.chat_id);
+  } catch (error) {
+    elements.chatContext.textContent = error.message;
+  }
 }
 
 function renderDocuments() {
@@ -548,15 +667,8 @@ async function handleFileUpload() {
       body: formData,
     });
 
-    const alreadyExists = state.documents.some((item) => item.name === payload.filename);
-    if (!alreadyExists) {
-      state.documents.unshift({
-        name: payload.filename,
-        type: extension,
-      });
-      writeStorage(storageKeys.documents(state.user.user_id), state.documents);
-      renderDocuments();
-    }
+    await loadChatHistory();
+    await selectChat(state.chatId);
 
     setUploadStatus(`${payload.filename} đã sẵn sàng để hỏi đáp.`, "success");
     elements.chatContext.textContent = `${state.documents.length} tài liệu đã tải lên`;
@@ -695,6 +807,7 @@ async function handleQuestionSubmit(event) {
       renderMarkdownInto(assistantBody, answer);
     }
     state.messages.push({ role: "assistant", text: answer });
+    await loadChatHistory();
     elements.chatContext.textContent = "Đã trả lời từ dữ liệu retrieval";
   } catch (error) {
     if (renderFrame) {
@@ -754,6 +867,9 @@ elements.logoutButton.addEventListener("click", handleLogout);
 elements.newChatButton.addEventListener("click", () => {
   state.chatId = createChatId();
   writeStorage(storageKeys.currentChat(state.user.user_id), state.chatId);
+  state.documents = [];
+  renderDocuments();
+  renderChatHistory();
   resetConversation();
   closeSidebar();
   elements.questionInput.focus();
