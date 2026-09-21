@@ -9,6 +9,7 @@ class Document(BaseModel):
     document_id: str 
     user_id: str 
     type: str
+    chat_id: str
 
 class Chunk(BaseModel): 
     chunk_id: str 

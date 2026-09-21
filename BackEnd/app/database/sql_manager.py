@@ -29,7 +29,8 @@ class Supabase_Manager():
         data = {
             "document_id": doc.document_id, 
             "user_id": doc.user_id, 
-            "type": doc.type
+            "type": doc.type,
+            "chat_id": doc.chat_id
         }
         response = (
             self.supabase.table("document").insert(data).execute()
