@@ -148,7 +148,8 @@ class Chatbot:
 
         for chunk in self._llm.stream(prompt):
             text = str(chunk.text)
-            yield text
+            if text:
+                yield text
 
 
 
@@ -160,5 +161,4 @@ if __name__ == "__main__":
     """
     ans = chatbot.invoke(user_prompt=user_prompt, data=data)
     print(ans)
-
 
