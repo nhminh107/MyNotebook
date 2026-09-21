@@ -25,6 +25,9 @@ class Pipeline:
 
     def insert_doc_pipeline(self, doc_path: str, user_id: str, chat_id: str): 
 
+        if not self.sql.select_chat_history(user_id=user_id, chat_id=chat_id):
+            self.sql.init_chat_history(chat_id=chat_id, user_id=user_id)
+
         factory = ExtractorFactory()
         base_model = factory.create(doc_path)
 
@@ -69,6 +72,7 @@ class Pipeline:
                         texts=texts,
                         user=user_id,
                         doc=doc,
+                        chat_id=chat_id
                     )
 
                     chunks = []
@@ -87,36 +91,44 @@ class Pipeline:
                 chat_id=chat_id
             )
 
-    def query(self, user_id: str, user_query: str):
-        query_embedding = self.embedding_model.embed_query(user_query)
-        query_retrieval = self.qdrant.search(user_id=user_id, query_embedding=query_embedding)
-        result = self.chatbot.invoke(user_prompt=user_query, data=query_retrieval)
-        return result
-
     def query_stream(self, user_id: str, user_query: str, chat_id: str) -> Iterator[str]:
         chat_history = self.sql.select_chat_history(
             chat_id=chat_id,
             user_id=user_id
         )
+        if not chat_history:
+            self.sql.init_chat_history(chat_id=chat_id, user_id=user_id)
+            chat_history = {
+                "conversation": [],
+                "summary": ""
+            }
+
+        current_summary = chat_history["summary"] or ""
 
         query_embedding = self.embedding_model.embed_query(user_query)
         query_retrieval = self.qdrant.search(
             user_id=user_id,
             query_embedding=query_embedding,
+            chat_id=chat_id
         )
         answer_parts = []
         for token in self.chatbot.stream(
             user_prompt=user_query, 
             data=query_retrieval, 
-            memory=chat_history["summary"]
+            memory=current_summary
         ): 
             answer_parts.append(token)
             yield token
 
         answer = "".join(answer_parts)
-        new_summary = self.chatbot.summarize_conversation(chat_history, user_message=user_query, chatbot_message=answer)
+        new_summary = self.chatbot.summarize_conversation(
+            current_summary=current_summary,
+            user_message=user_query,
+            chatbot_message=answer
+        )
 
         self.sql.update_chat_history(
+            user_id=user_id,
             chat_id=chat_id,
             user_message=user_query,
             chatbot_message=answer,

@@ -17,13 +17,8 @@ from BackEnd.app.text_input.Embedding import EmbeddingModel
 
 class RetrievalRequest(BaseModel):
     user_id: str = Field(min_length=1)
-    chat_history: str = Field(min_length=1)
+    chat_id: str = Field(min_length=1)
     user_query: str = Field(min_length=1)
-
-
-class RetrievalResponse(BaseModel):
-    message: str
-    data: str
 
 
 def format_sse_event(event: str, payload: dict) -> str:
@@ -114,6 +109,7 @@ async def upload_document(
             "message": "Document uploaded successfully.",
             "filename": file.filename,
             "user_id": user_id,
+            "chat_id": chat_id,
         }
 
     except Exception as exc:
@@ -127,48 +123,17 @@ async def upload_document(
             Path(temp_path).unlink(missing_ok=True)
 
 
-@router.post("/retrieval", response_model=RetrievalResponse)
-def retrieve_document(
-    request: RetrievalRequest,
-) -> RetrievalResponse:
-    user_id = request.user_id.strip()
-    user_query = request.user_query.strip()
-
-    if not user_id or not user_query:
-        raise HTTPException(
-            status_code=400,
-            detail="User ID and query must not be blank.",
-        )
-
-    try:
-        pipeline = get_pipeline()
-        result = pipeline.query(
-            user_id=user_id,
-            user_query=user_query,
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail="Unable to retrieve document information.",
-        ) from exc
-
-    return RetrievalResponse(
-        message="Retrieval completed successfully.",
-        data=result,
-    )
-
-
 @router.post("/retrieval/stream")
 def stream_retrieve_document(
     request: RetrievalRequest,
 ) -> StreamingResponse:
     user_id = request.user_id.strip()
     user_query = request.user_query.strip()
-    chat_id = request.chat_history.strip()
-    if not user_id or not user_query:
+    chat_id = request.chat_id.strip()
+    if not user_id or not chat_id or not user_query:
         raise HTTPException(
             status_code=400,
-            detail="User ID and query must not be blank.",
+            detail="User ID, chat ID and query must not be blank.",
         )
 
     try:

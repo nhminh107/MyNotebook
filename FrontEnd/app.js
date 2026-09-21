@@ -1,11 +1,13 @@
 const storageKeys = {
   user: "notebook.currentUser",
   documents: (userId) => `notebook.documents.${userId}`,
+  currentChat: (userId) => `notebook.currentChat.${userId}`,
 };
 
 const state = {
   authMode: "login",
   user: readStorage(storageKeys.user, null),
+  chatId: null,
   documents: [],
   messages: [],
   isSending: false,
@@ -56,6 +58,10 @@ function readStorage(key, fallback) {
 
 function writeStorage(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function createChatId() {
+  return crypto.randomUUID();
 }
 
 function getErrorMessage(payload, fallback) {
@@ -453,6 +459,8 @@ function showApplication() {
   elements.appShell.classList.remove("is-hidden");
   elements.accountName.textContent = state.user.user_name;
   elements.accountAvatar.textContent = state.user.user_name.slice(0, 1) || "N";
+  state.chatId = readStorage(storageKeys.currentChat(state.user.user_id), null) || createChatId();
+  writeStorage(storageKeys.currentChat(state.user.user_id), state.chatId);
   state.documents = readStorage(storageKeys.documents(state.user.user_id), []);
   renderDocuments();
   window.setTimeout(() => elements.questionInput.focus(), 0);
@@ -461,6 +469,7 @@ function showApplication() {
 function handleLogout() {
   localStorage.removeItem(storageKeys.user);
   state.user = null;
+  state.chatId = null;
   state.documents = [];
   resetConversation();
   closeSidebar();
@@ -526,6 +535,7 @@ async function handleFileUpload() {
 
   const formData = new FormData();
   formData.append("user_id", state.user.user_id);
+  formData.append("chat_id", state.chatId);
   formData.append("file", file);
   state.isUploading = true;
   elements.fileInput.disabled = true;
@@ -647,6 +657,7 @@ async function handleQuestionSubmit(event) {
     await streamRetrieval(
       {
         user_id: state.user.user_id,
+        chat_id: state.chatId,
         user_query: question,
       },
       (token) => {
@@ -741,6 +752,8 @@ elements.authTabs.forEach((tab) => {
 elements.authForm.addEventListener("submit", handleAuthSubmit);
 elements.logoutButton.addEventListener("click", handleLogout);
 elements.newChatButton.addEventListener("click", () => {
+  state.chatId = createChatId();
+  writeStorage(storageKeys.currentChat(state.user.user_id), state.chatId);
   resetConversation();
   closeSidebar();
   elements.questionInput.focus();
