@@ -13,7 +13,8 @@ from BackEnd.app.database.qdrant_manager import QDrant
 from BackEnd.app.database.sql_manager import Supabase_Manager
 from BackEnd.app.pipeline import Pipeline
 from BackEnd.app.text_input.Embedding import EmbeddingModel
-
+from BackEnd.app.chatbot.tools import ToolList
+from BackEnd.app.chatbot.agents import Agents
 
 class RetrievalRequest(BaseModel):
     user_id: str = Field(min_length=1)
@@ -30,10 +31,14 @@ def stream_retrieval_events(
     pipeline: Pipeline,
     user_id: str,
     user_query: str,
-    chat_id: str
+    chat_id: str,
+    use_agent: bool = False,
 ) -> Iterator[str]:
     try:
-        for token in pipeline.query_stream(
+        stream_method = (
+            pipeline.agent_query_stream if use_agent else pipeline.query_stream
+        )
+        for token in stream_method(
             user_id=user_id,
             user_query=user_query,
             chat_id=chat_id
@@ -54,13 +59,22 @@ def get_database() -> Supabase_Manager:
     return Supabase_Manager()
 
 
-@lru_cache(maxsize=5)
+@lru_cache(maxsize=1)
 def get_pipeline() -> Pipeline:
+    qdrant = QDrant()
+    embedding_model = EmbeddingModel()
+    chatbot = Chatbot()
+    agent_tools = ToolList(
+        llm=chatbot._llm,
+        qdrant=qdrant,
+        embedding_model=embedding_model,
+    )
     return Pipeline(
         sql=get_database(),
-        qdrant=QDrant(),
-        embedding_model=EmbeddingModel(),
-        chatbot=Chatbot(),
+        qdrant=qdrant,
+        embedding_model=embedding_model,
+        chatbot=chatbot,
+        agent=Agents(agent_tools),
     )
 
 
@@ -178,6 +192,45 @@ async def upload_document(
     finally:
         if "temp_path" in locals():
             Path(temp_path).unlink(missing_ok=True)
+
+
+@router.post("/retrieval/agent-stream")
+def stream_agent_retrieve(
+    request: RetrievalRequest
+) -> StreamingResponse:
+
+    user_id = request.user_id.strip()
+    user_query = request.user_query.strip()
+    chat_id = request.chat_id.strip()
+
+    if not user_id or not chat_id or not user_query:
+        raise HTTPException(
+            status_code=400,
+            detail="User ID, chat ID and query must not be blank"
+        )
+
+    try:
+        pipeline = get_pipeline()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to initialize document retrieval.",
+        ) from exc
+
+    return StreamingResponse(
+        stream_retrieval_events(
+            pipeline=pipeline,
+            user_id=user_id,
+            user_query=user_query,
+            chat_id=chat_id,
+            use_agent=True,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/retrieval/stream")

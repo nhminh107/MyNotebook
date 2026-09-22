@@ -29,7 +29,12 @@ class ToolList:
             StructuredTool.from_function(
                 func=self._qdrant_query_tool,
                 name="qdrant_query",
-                description="Search the user's uploaded documents for relevant information.",
+                description=(
+                    "Search the user's uploaded documents for passages relevant "
+                    "to a focused query. Use this for document-based questions. "
+                    "Results are raw extracted text and may require synthesis and "
+                    "format cleanup before answering."
+                ),
             )
         )
         self.tools.append(

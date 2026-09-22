@@ -23,4 +23,7 @@ dependencies = [
     "langchain-openai>=1.6.2",
     "python-multipart>=0.0.32",
     "fastembed>=0.8.0",
+    "mypy-extensions>=1.1.0",
+    "numexpr>=2.14.2",
+    "ddgs>=9.16.0",
 ]

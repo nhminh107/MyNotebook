@@ -42,7 +42,7 @@ class StubUploadFile:
         return self.content
 
 
-def test_only_stream_retrieval_route_is_registered() -> None:
+def test_stream_routes_are_registered() -> None:
     routes = {
         route.path: route.methods
         for route in document_api.router.routes
@@ -50,6 +50,7 @@ def test_only_stream_retrieval_route_is_registered() -> None:
 
     assert "/documents/retrieval" not in routes
     assert routes["/documents/retrieval/stream"] == {"POST"}
+    assert routes["/documents/retrieval/agent-stream"] == {"POST"}
     assert routes["/documents/chats/{user_id}"] == {"GET"}
     assert routes["/documents/chats/{user_id}/{chat_id}"] == {"GET"}
 
@@ -146,6 +147,38 @@ def test_stream_retrieval_events_emits_tokens_and_done() -> None:
     assert events == [
         'event: token\ndata: {"content": "Hello"}\n\n',
         'event: token\ndata: {"content": " **world**"}\n\n',
+        "event: done\ndata: {}\n\n",
+    ]
+
+
+def test_stream_retrieval_events_uses_agent_pipeline_when_requested() -> None:
+    class AgentStreamingPipeline:
+        def agent_query_stream(
+            self,
+            user_id: str,
+            user_query: str,
+            chat_id: str,
+        ):
+            assert user_id == "001"
+            assert user_query == "question"
+            assert chat_id == "chat-001"
+            yield "Agent answer"
+
+        def query_stream(self, **kwargs):
+            raise AssertionError("Standard retrieval must not be called")
+
+    events = list(
+        document_api.stream_retrieval_events(
+            pipeline=AgentStreamingPipeline(),
+            user_id="001",
+            user_query="question",
+            chat_id="chat-001",
+            use_agent=True,
+        )
+    )
+
+    assert events == [
+        'event: token\ndata: {"content": "Agent answer"}\n\n',
         "event: done\ndata: {}\n\n",
     ]
 

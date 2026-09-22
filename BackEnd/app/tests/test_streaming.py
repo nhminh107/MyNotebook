@@ -14,6 +14,7 @@ class StubLlm:
         self.prompt = prompt
         yield AIMessageChunk(content="Hello")
         yield AIMessageChunk(content=" **world**")
+        yield AIMessageChunk(content="\x00")
         yield AIMessageChunk(content="")
 
 
@@ -64,6 +65,10 @@ class StubAgent:
         }
         yield {
             "type": "messages",
+            "data": (StubToken("\x00"), {"langgraph_node": "model"}),
+        }
+        yield {
+            "type": "messages",
             "data": (StubToken(""), {"langgraph_node": "model"}),
         }
 
@@ -76,9 +81,9 @@ def test_agent_stream_yields_text_and_passes_runtime_context() -> None:
     chunks = list(
         agents.stream(
             user_prompt="Question",
-            data="Retrieved context",
             memory="Previous summary",
             user_id="user-001",
+            chat_id="chat-001",
         )
     )
 
@@ -90,8 +95,6 @@ def test_agent_stream_yields_text_and_passes_runtime_context() -> None:
                 "content": (
                     "Conversation summary:\n"
                     "Previous summary\n\n"
-                    "Retrieval information:\n"
-                    "Retrieved context\n\n"
                     "Question:\n"
                     "Question"
                 ),
@@ -99,7 +102,7 @@ def test_agent_stream_yields_text_and_passes_runtime_context() -> None:
         ]
     }
     assert stub_agent.options == {
-        "context": AppContext(user_id="user-001"),
+        "context": AppContext(user_id="user-001", chat_id="chat-001"),
         "stream_mode": "messages",
         "version": "v2",
     }
