@@ -3,16 +3,20 @@ import pytest
 from fastapi import HTTPException
 
 from BackEnd.app.api import auth as auth_api
-from BackEnd.app.database.sql_models import Login
+from BackEnd.app.database.sql_models import Login, Register, User
 from BackEnd.app.service.auth_service import AuthService
 
 
 class StubDatabase:
     def __init__(self, users: list[dict]) -> None:
         self.users = users
+        self.inserted_user = None
 
     def select_user_by_name(self, user_name: str) -> list[dict]:
         return [user for user in self.users if user["user_name"] == user_name]
+
+    def insert_user(self, user: User) -> None:
+        self.inserted_user = user
 
 
 def create_user(password: str = "correct-password") -> dict:
@@ -24,7 +28,18 @@ def create_user(password: str = "correct-password") -> dict:
         "user_id": "user-001",
         "user_name": "minh",
         "user_password": password_hash,
+        "plan": "Free",
     }
+
+
+def test_register_creates_free_user() -> None:
+    database = StubDatabase([])
+    service = AuthService(database=database)
+
+    result = service.register(Register(user_name="minh", password="password"))
+
+    assert database.inserted_user.plan == "Free"
+    assert result["plan"] == "Free"
 
 
 def test_login_returns_user_for_valid_credentials() -> None:
@@ -37,6 +52,7 @@ def test_login_returns_user_for_valid_credentials() -> None:
     assert result == {
         "user_id": "user-001",
         "user_name": "minh",
+        "plan": "Free",
     }
 
 
@@ -73,6 +89,7 @@ def test_login_endpoint_returns_success(monkeypatch) -> None:
         "data": {
             "user_id": "user-001",
             "user_name": "minh",
+            "plan": "Free",
         },
     }
 

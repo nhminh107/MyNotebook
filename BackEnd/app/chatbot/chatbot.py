@@ -7,6 +7,8 @@ from langchain_classic.memory import ConversationSummaryMemory
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
+from BackEnd.app.text_sanitizer import sanitize_text
+
 load_dotenv()
 
 MINTROUTE_API = os.getenv("LLM_API_KEY")
@@ -56,7 +58,7 @@ class Chatbot:
             input_variables=["user_prompt", "chat_history"]
         )
         self._summary_llm = ChatOpenAI(
-            model="nemotron-3-ultra-free",
+            model="deepseek-4.1",
             temperature=0.1,
             base_url="https://api.mintrouter.ai/v1",
             api_key=MINTROUTE_API,
@@ -104,7 +106,7 @@ class Chatbot:
             "summary": current_summary,
             "new_lines": new_lines
         })
-        return result["summary"].strip()
+        return sanitize_text(result["summary"]).strip()
     def convert_query(self, user_prompt: str) -> str:
         chat_history = self._memory.load_memory_variables({})["chat_history"]
         if not chat_history:
@@ -147,7 +149,7 @@ class Chatbot:
         )
 
         for chunk in self._llm.stream(prompt):
-            text = str(chunk.text)
+            text = sanitize_text(str(chunk.text))
             if text:
                 yield text
 
@@ -161,4 +163,3 @@ if __name__ == "__main__":
     """
     ans = chatbot.invoke(user_prompt=user_prompt, data=data)
     print(ans)
-

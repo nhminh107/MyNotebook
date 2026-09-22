@@ -10,6 +10,7 @@ const state = {
   chats: [],
   documents: [],
   messages: [],
+  answerMode: "retrieval",
   isSending: false,
   isUploading: false,
 };
@@ -39,6 +40,9 @@ const elements = {
   messageList: document.querySelector("#message-list"),
   chatScroll: document.querySelector("#chat-scroll"),
   chatContext: document.querySelector("#chat-context"),
+  answerMode: document.querySelector("#answer-mode"),
+  agentModeOption: document.querySelector("#agent-mode-option"),
+  composerNote: document.querySelector("#composer-note"),
   chatForm: document.querySelector("#chat-form"),
   questionInput: document.querySelector("#question-input"),
   sendButton: document.querySelector("#send-button"),
@@ -315,10 +319,13 @@ function parseSseEvent(block) {
   };
 }
 
-async function streamRetrieval(request, onToken) {
+async function streamRetrieval(request, onToken, mode = "retrieval") {
+  const endpoint = mode === "agent"
+    ? "/documents/retrieval/agent-stream"
+    : "/documents/retrieval/stream";
   let response;
   try {
-    response = await fetch("/documents/retrieval/stream", {
+    response = await fetch(endpoint, {
       method: "POST",
       headers: {
         Accept: "text/event-stream",
@@ -461,6 +468,7 @@ function showApplication() {
   elements.appShell.classList.remove("is-hidden");
   elements.accountName.textContent = state.user.user_name;
   elements.accountAvatar.textContent = state.user.user_name.slice(0, 1) || "N";
+  configureAnswerMode();
   state.chatId = readStorage(storageKeys.currentChat(state.user.user_id), null) || createChatId();
   writeStorage(storageKeys.currentChat(state.user.user_id), state.chatId);
   state.documents = [];
@@ -475,6 +483,7 @@ function handleLogout() {
   state.chatId = null;
   state.chats = [];
   state.documents = [];
+  state.answerMode = "retrieval";
   resetConversation();
   closeSidebar();
   setAuthMode("login");
@@ -737,8 +746,23 @@ function setSending(isSending) {
   state.isSending = isSending;
   elements.sendButton.disabled = isSending;
   elements.questionInput.disabled = isSending;
+  elements.answerMode.disabled = isSending;
   elements.sendButton.textContent = isSending ? "Đợi..." : "Gửi";
   elements.chatForm.setAttribute("aria-busy", String(isSending));
+}
+
+function configureAnswerMode() {
+  const isProUser = state.user?.plan?.toLowerCase() === "pro";
+  elements.agentModeOption.disabled = !isProUser;
+
+  if (!isProUser && state.answerMode === "agent") {
+    state.answerMode = "retrieval";
+  }
+
+  elements.answerMode.value = state.answerMode;
+  elements.composerNote.textContent = state.answerMode === "agent"
+    ? "Agent có thể dùng tài liệu và công cụ bổ sung. Hãy kiểm tra lại thông tin quan trọng."
+    : "Câu trả lời được tạo từ dữ liệu retrieval. Hãy kiểm tra lại thông tin quan trọng.";
 }
 
 async function handleQuestionSubmit(event) {
@@ -757,7 +781,10 @@ async function handleQuestionSubmit(event) {
   elements.questionInput.value = "";
   resizeQuestionInput();
   setSending(true);
-  elements.chatContext.textContent = "Đang tìm trong tài liệu";
+  const answerMode = state.answerMode;
+  elements.chatContext.textContent = answerMode === "agent"
+    ? "Agent đang xử lý yêu cầu"
+    : "Đang tìm trong tài liệu";
   scrollToLatestMessage();
 
   let answer = "";
@@ -792,6 +819,7 @@ async function handleQuestionSubmit(event) {
           });
         }
       },
+      answerMode,
     );
 
     if (renderFrame) {
@@ -808,7 +836,9 @@ async function handleQuestionSubmit(event) {
     }
     state.messages.push({ role: "assistant", text: answer });
     await loadChatHistory();
-    elements.chatContext.textContent = "Đã trả lời từ dữ liệu retrieval";
+    elements.chatContext.textContent = answerMode === "agent"
+      ? "Agent đã hoàn tất câu trả lời"
+      : "Đã trả lời từ dữ liệu retrieval";
   } catch (error) {
     if (renderFrame) {
       window.cancelAnimationFrame(renderFrame);
@@ -875,6 +905,10 @@ elements.newChatButton.addEventListener("click", () => {
   elements.questionInput.focus();
 });
 elements.fileInput.addEventListener("change", handleFileUpload);
+elements.answerMode.addEventListener("change", () => {
+  state.answerMode = elements.answerMode.value;
+  configureAnswerMode();
+});
 elements.chatForm.addEventListener("submit", handleQuestionSubmit);
 elements.questionInput.addEventListener("input", resizeQuestionInput);
 elements.questionInput.addEventListener("keydown", (event) => {

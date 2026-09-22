@@ -2,11 +2,11 @@ from collections.abc import Iterator
 from pathlib import Path
 import uuid
 
-import BackEnd.app.CONFIG
 from BackEnd.app.chatbot.chatbot import Chatbot
 from BackEnd.app.database.qdrant_manager import QDrant
 from BackEnd.app.database.sql_manager import Supabase_Manager
 from BackEnd.app.database.sql_models import Chunk, Document, User
+from BackEnd.app.chatbot.agents import Agents
 from BackEnd.app.doc_extractor.extractor import (
     BaseExtractor,
     ExtractorFactory,
@@ -17,11 +17,12 @@ from BackEnd.app.doc_extractor.extractor import (
 from BackEnd.app.text_input.Embedding import EmbeddingModel
 
 class Pipeline:
-    def __init__(self, sql: Supabase_Manager, qdrant: QDrant, embedding_model: EmbeddingModel, chatbot: Chatbot = None):
+    def __init__(self, sql: Supabase_Manager, qdrant: QDrant, embedding_model: EmbeddingModel, chatbot: Chatbot = None, agent: Agents = None):
         self.sql = sql
         self.qdrant = qdrant
         self.embedding_model = embedding_model
         self.chatbot = chatbot
+        self.agent = agent
 
     def insert_doc_pipeline(self, doc_path: str, user_id: str, chat_id: str, file_name: str):
 
@@ -114,6 +115,7 @@ class Pipeline:
         query_embedding = self.embedding_model.embed_query(user_query)
         query_retrieval = self.qdrant.search(
             user_id=user_id,
+            query_text=user_query,
             query_embedding=query_embedding,
             chat_id=chat_id
         )
@@ -128,6 +130,55 @@ class Pipeline:
 
         answer = "".join(answer_parts)
         new_summary = self.chatbot.summarize_conversation(
+            current_summary=current_summary,
+            user_message=user_query,
+            chatbot_message=answer
+        )
+
+        self.sql.update_chat_history(
+            user_id=user_id,
+            chat_id=chat_id,
+            user_message=user_query,
+            chatbot_message=answer,
+            chat_summary=new_summary
+        )
+
+    def agent_query_stream(
+        self,
+        user_id: str,
+        user_query: str,
+        chat_id: str,
+    ) -> Iterator[str]:
+        users = self.sql.select_user(user_id)
+        user_plan = (users[0].get("plan") or "Free") if users else "Free"
+        if user_plan.strip().lower() != "pro":
+            raise PermissionError("Only Pro users can use Agent mode.")
+
+        chat_history = self.sql.select_chat_history(
+            chat_id=chat_id,
+            user_id=user_id
+        )
+        if not chat_history:
+            self.sql.init_chat_history(chat_id=chat_id, user_id=user_id)
+            chat_history = {
+                "conversation": [],
+                "summary": ""
+            }
+
+        current_summary = chat_history["summary"] or ""
+
+        answer_parts = []
+        for token in self.agent.stream(
+            user_prompt=user_query,
+            memory=current_summary,
+            user_id=user_id,
+            chat_id=chat_id,
+        ):
+            answer_parts.append(token)
+            yield token
+
+        answer = "".join(answer_parts)
+        new_summary = self.agent.summarize_conversation(
             current_summary=current_summary,
             user_message=user_query,
             chatbot_message=answer

@@ -1,5 +1,6 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from BackEnd.app.CONFIG import CHUNKING_OVERLAP, CHUNKING_SIZE
+from BackEnd.app.text_sanitizer import sanitize_text
 from transformers import AutoTokenizer
 
 tokenizer = AutoTokenizer.from_pretrained(
@@ -14,6 +15,7 @@ def token_length(text: str):
     )
 
 def chunking(text: str):
+    text = sanitize_text(text)
 
     chunker = RecursiveCharacterTextSplitter(
         chunk_size=CHUNKING_SIZE, 
@@ -55,5 +57,4 @@ Cách này truy xuất nhiều chunk ban đầu, chấm lại mức độ liên 
 chunk, sau đó chỉ đưa các chunk tốt nhất vào prompt.
 Nhờ cấu trúc này, project vừa cung cấp một ứng dụng NotebookLM đơn giản có thể sử dụng
 thực tế, vừa có cơ chế đánh giá để lựa chọn cấu hình retrieval phù hợp hơn cho tài liệu học tập."""
-
 
