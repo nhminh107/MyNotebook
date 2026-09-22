@@ -143,10 +143,17 @@ class Pipeline:
             chat_summary=new_summary
         )
 
-    def agent_query_stream(self, user_id: str, user_query: str, chat_id: str) -> Iterator[str]:
-        if (self.sql.select_user(user_id)['Plan'] == 'Free'):
-            raise ("Just PRO plan can use this feature")
-        
+    def agent_query_stream(
+        self,
+        user_id: str,
+        user_query: str,
+        chat_id: str,
+    ) -> Iterator[str]:
+        users = self.sql.select_user(user_id)
+        user_plan = (users[0].get("plan") or "Free") if users else "Free"
+        if user_plan.strip().lower() != "pro":
+            raise PermissionError("Only Pro users can use Agent mode.")
+
         chat_history = self.sql.select_chat_history(
             chat_id=chat_id,
             user_id=user_id
@@ -160,20 +167,13 @@ class Pipeline:
 
         current_summary = chat_history["summary"] or ""
 
-        query_embedding = self.embedding_model.embed_query(user_query)
-        query_retrieval = self.qdrant.search(
-            user_id=user_id,
-            query_text=user_query,
-            query_embedding=query_embedding,
-            chat_id=chat_id
-        )
         answer_parts = []
         for token in self.agent.stream(
-            user_prompt=user_query, 
-            data=query_retrieval, 
+            user_prompt=user_query,
             memory=current_summary,
-            user_id=user_id
-        ): 
+            user_id=user_id,
+            chat_id=chat_id,
+        ):
             answer_parts.append(token)
             yield token
 

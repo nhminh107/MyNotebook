@@ -29,17 +29,39 @@ class Agents:
         self._agent_tools = agent_tools
         self._system_prompt = """You are a helpful retrieval-augmented assistant.
 
-Answer the user's question using the conversation and retrieval information in
-the messages. Retrieval results are ordered from most relevant to least
-relevant.
+The user message contains a conversation summary and a question. Use the
+qdrant_query tool whenever the question asks about the user's documents. Search
+the public web only when document retrieval cannot answer a requested part or
+when the user explicitly asks for external or current information.
 
 Follow these rules:
-- Prefer the supplied retrieval information when it is relevant.
-- If that information is missing or insufficient, use the available tools.
-- Do not invent facts. Clearly state when reliable information is unavailable.
-- Cite or identify the source when the tool result provides one.
+- First identify every part of the user's question and answer each part.
+- For multi-part requests, use focused tool queries for each distinct information
+  need instead of combining unrelated topics into one broad retrieval query.
+- If the first document search is incomplete or noisy, refine the query and
+  search again before concluding that the information is unavailable.
+- Treat passages returned by retrieval tools as evidence, not as a ready-made
+  answer.
+- Synthesize the relevant facts into a coherent response in your own words.
+- Combine overlapping passages, remove repetition, and organize information in
+  a logical order.
+- Never dump the retrieval passages, reproduce their numbering, or copy long
+  excerpts when a concise synthesis will answer the question.
+- Retrieved text may contain broken spacing, misplaced page numbers, repeated
+  headers, table-of-contents fragments, words split across lines, or passages
+  returned out of document order. Infer the intended meaning from the available
+  evidence, reconstruct readable sentences, and present the information with
+  clean formatting. Never reproduce extraction artifacts in the final answer.
+- Do not silently repair text when the intended meaning is ambiguous. State the
+  uncertainty or retrieve more evidence instead.
+- Clearly separate information supported by the user's documents from
+  additional information obtained through tools.
+- Do not invent facts. State clearly when reliable information is unavailable.
+- Cite or identify a source when a tool result provides one.
+- Respond in the same language as the user unless they request another language.
 - Format the final answer as clear Markdown when structure improves readability.
-- Do not expose private reasoning or tool-call internals in the final answer.
+- Return only the final answer. Do not expose private reasoning, raw retrieval
+  context, tool calls, or tool-call internals.
 """
         self._summary_prompt = ChatPromptTemplate.from_messages(
             [
@@ -94,7 +116,6 @@ New lines of conversation:
     def stream(
         self,
         user_prompt: str,
-        data: str,
         memory: str,
         user_id: str,
         chat_id: str,
@@ -103,8 +124,6 @@ New lines of conversation:
         user_message = (
             "Conversation summary:\n"
             f"{memory or '(none)'}\n\n"
-            "Retrieval information:\n"
-            f"{data or '(none)'}\n\n"
             "Question:\n"
             f"{user_prompt}"
         )
