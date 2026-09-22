@@ -972,6 +972,32 @@ a {
   background: var(--surface);
 }
 
+.answer-mode-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: min(100%, 860px);
+  margin: 0 auto 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.answer-mode-control select {
+  padding: 6px 28px 6px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--blue-800);
+  font: inherit;
+}
+
+.answer-mode-control select:focus-visible {
+  outline: 2px solid var(--blue-600);
+  outline-offset: 2px;
+}
+
 .composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

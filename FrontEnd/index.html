@@ -8,8 +8,8 @@
       content="Notebook giúp tải tài liệu và hỏi đáp trực tiếp từ nội dung của bạn."
     />
     <title>Notebook | Hỏi đáp tài liệu</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260921-1" />
-    <script src="/static/app.js?v=20260921-1" defer></script>
+    <link rel="stylesheet" href="/static/styles.css?v=20260922-1" />
+    <script src="/static/app.js?v=20260922-1" defer></script>
   </head>
   <body>
     <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
@@ -203,6 +203,13 @@
         </div>
 
         <div class="composer-area">
+          <div class="answer-mode-control">
+            <label for="answer-mode">Chế độ trả lời</label>
+            <select id="answer-mode" name="answer_mode">
+              <option value="retrieval">Tài liệu</option>
+              <option id="agent-mode-option" value="agent">Agent tools · Pro</option>
+            </select>
+          </div>
           <form class="composer" id="chat-form">
             <label class="visually-hidden" for="question-input">Nhập câu hỏi</label>
             <textarea
