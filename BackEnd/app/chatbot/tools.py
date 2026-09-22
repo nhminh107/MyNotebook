@@ -9,17 +9,20 @@ from langchain_community.agent_toolkits.load_tools import load_tools
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import StructuredTool, Tool
 from langchain_openai import ChatOpenAI
-
+from langchain.tools import tool, ToolRuntime
 from BackEnd.app.database.qdrant_manager import QDrant
 from BackEnd.app.text_input.Embedding import EmbeddingModel
-
+from dataclasses import dataclass
 load_dotenv()
 
-
+@dataclass
+class AppContext:
+    user_id: str
+    chat_id: str
 class ToolList:
-    def __init__(self, llm):
-        self.qdrant = QDrant()
-        self.embedding_model = EmbeddingModel()
+    def __init__(self, llm, qdrant: QDrant, embedding_model: EmbeddingModel):
+        self.qdrant = qdrant
+        self.embedding_model = embedding_model
         self.ocr_llm = None
         self.tools = load_tools(["llm-math"], llm=llm)
         self.tools.append(
@@ -50,11 +53,15 @@ class ToolList:
         )
         self.tools.append(search_tool)
 
-    def _qdrant_query_tool(self, query: str, user_id: str, chat_id: str, limit: int = 5) -> str:
+    def _qdrant_query_tool(self, query: str, runtime: ToolRuntime[AppContext], limit: int = 5) -> str:
         """Return the most relevant passages from the user's documents."""
         query_embedding = self.embedding_model.embed_query(query)
+        user_id = runtime.context.user_id
+        chat_id = runtime.context.chat_id
+        
         return self.qdrant.search(
             user_id=user_id,
+            query_text=query,
             query_embedding=query_embedding,
             chat_id=chat_id,
             limit=limit,
