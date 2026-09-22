@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from functools import lru_cache
 import json
+import logging
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
@@ -15,6 +16,9 @@ from BackEnd.app.pipeline import Pipeline
 from BackEnd.app.text_input.Embedding import EmbeddingModel
 from BackEnd.app.chatbot.tools import ToolList
 from BackEnd.app.chatbot.agents import Agents
+
+logger = logging.getLogger(__name__)
+
 
 class RetrievalRequest(BaseModel):
     user_id: str = Field(min_length=1)
@@ -45,6 +49,10 @@ def stream_retrieval_events(
         ):
             yield format_sse_event("token", {"content": token})
     except Exception:
+        logger.exception(
+            "Document response stream failed (agent_mode=%s).",
+            use_agent,
+        )
         yield format_sse_event(
             "error",
             {"detail": "Unable to stream document information."},
@@ -212,6 +220,7 @@ def stream_agent_retrieve(
     try:
         pipeline = get_pipeline()
     except Exception as exc:
+        logger.exception("Unable to initialize the document pipeline.")
         raise HTTPException(
             status_code=500,
             detail="Unable to initialize document retrieval.",
@@ -249,6 +258,7 @@ def stream_retrieve_document(
     try:
         pipeline = get_pipeline()
     except Exception as exc:
+        logger.exception("Unable to initialize the document pipeline.")
         raise HTTPException(
             status_code=500,
             detail="Unable to initialize document retrieval.",

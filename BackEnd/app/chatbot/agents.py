@@ -27,41 +27,19 @@ MINTROUTE_API = os.getenv("LLM_API_KEY")
 class Agents:
     def __init__(self, agent_tools: ToolList):
         self._agent_tools = agent_tools
-        self._system_prompt = """You are a helpful retrieval-augmented assistant.
+        self._system_prompt = """You are a tool-using assistant. Answer every
+part of the user's question directly and in the user's language.
 
-The user message contains a conversation summary and a question. Use the
-qdrant_query tool whenever the question asks about the user's documents. Search
-the public web only when document retrieval cannot answer a requested part or
-when the user explicitly asks for external or current information.
+Before answering, select and use the appropriate tools to gather the required
+information. Use qdrant_query for the user's documents, web_search for public or
+current information, Calculator for calculations, and ocr_image for images.
+Use focused tool queries and search again when a result is incomplete.
 
-Follow these rules:
-- First identify every part of the user's question and answer each part.
-- For multi-part requests, use focused tool queries for each distinct information
-  need instead of combining unrelated topics into one broad retrieval query.
-- If the first document search is incomplete or noisy, refine the query and
-  search again before concluding that the information is unavailable.
-- Treat passages returned by retrieval tools as evidence, not as a ready-made
-  answer.
-- Synthesize the relevant facts into a coherent response in your own words.
-- Combine overlapping passages, remove repetition, and organize information in
-  a logical order.
-- Never dump the retrieval passages, reproduce their numbering, or copy long
-  excerpts when a concise synthesis will answer the question.
-- Retrieved text may contain broken spacing, misplaced page numbers, repeated
-  headers, table-of-contents fragments, words split across lines, or passages
-  returned out of document order. Infer the intended meaning from the available
-  evidence, reconstruct readable sentences, and present the information with
-  clean formatting. Never reproduce extraction artifacts in the final answer.
-- Do not silently repair text when the intended meaning is ambiguous. State the
-  uncertainty or retrieve more evidence instead.
-- Clearly separate information supported by the user's documents from
-  additional information obtained through tools.
-- Do not invent facts. State clearly when reliable information is unavailable.
-- Cite or identify a source when a tool result provides one.
-- Respond in the same language as the user unless they request another language.
-- Format the final answer as clear Markdown when structure improves readability.
-- Return only the final answer. Do not expose private reasoning, raw retrieval
-  context, tool calls, or tool-call internals.
+Tool results are raw evidence, not the final answer. Extract only the relevant
+facts, repair obvious formatting or extraction noise, remove repetition, and
+synthesize a clear response in your own words. Never display raw tool output,
+retrieval numbering, tool calls, or private reasoning. Do not invent missing
+facts; state clearly when the available tools cannot provide a reliable answer.
 """
         self._summary_prompt = ChatPromptTemplate.from_messages(
             [
@@ -86,7 +64,7 @@ New lines of conversation:
         )
 
         self._summary_llm = ChatOpenAI(
-            model="nemotron-3-ultra-free",
+            model="deepseek-4.1",
             temperature=0.1,
             base_url="https://api.mintrouter.ai/v1",
             api_key=MINTROUTE_API,
@@ -137,7 +115,9 @@ New lines of conversation:
             if chunk["type"] != "messages":
                 continue
 
-            token, _metadata = chunk["data"]
+            token, metadata = chunk["data"]
+            if metadata.get("langgraph_node") != "model":
+                continue
             text = sanitize_text(token.text)
             if text:
                 yield text

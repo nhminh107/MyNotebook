@@ -58,7 +58,7 @@ class Chatbot:
             input_variables=["user_prompt", "chat_history"]
         )
         self._summary_llm = ChatOpenAI(
-            model="nemotron-3-ultra-free",
+            model="deepseek-4.1",
             temperature=0.1,
             base_url="https://api.mintrouter.ai/v1",
             api_key=MINTROUTE_API,
