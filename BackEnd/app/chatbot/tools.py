@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from langchain_community.tools import DuckDuckGoSearchResults
 from langchain_community.agent_toolkits.load_tools import load_tools
 from langchain_core.messages import HumanMessage
-from langchain_core.tools import StructuredTool, Tool
+from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
 from langchain.tools import tool, ToolRuntime
 from BackEnd.app.database.qdrant_manager import QDrant
@@ -42,14 +42,12 @@ class ToolList:
         self._search_tool()
 
     def _search_tool(self):
-        search = DuckDuckGoSearchResults()
-        search_tool = Tool(
+        search_tool = DuckDuckGoSearchResults(
             name="duckduck",
             description=(
                 "Search the public web for information that is not available "
                 "in the user's uploaded documents."
             ),
-            func=search.run
         )
         self.tools.append(search_tool)
 

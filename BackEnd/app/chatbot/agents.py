@@ -10,6 +10,7 @@ from langchain_openai import ChatOpenAI
 from langchain.agents.middleware import ToolCallLimitMiddleware
 
 from BackEnd.app.chatbot.tools import ToolList
+from BackEnd.app.text_sanitizer import sanitize_text
 
 load_dotenv()
 
@@ -17,6 +18,7 @@ load_dotenv()
 @dataclass
 class AppContext:
     user_id: str
+    chat_id: str
 
 
 MINTROUTE_API = os.getenv("LLM_API_KEY")
@@ -95,6 +97,7 @@ New lines of conversation:
         data: str,
         memory: str,
         user_id: str,
+        chat_id: str,
     ) -> Iterator[str]:
         """Yield only text tokens from an agent run."""
         user_message = (
@@ -108,7 +111,7 @@ New lines of conversation:
 
         for chunk in self._agent.stream(
             {"messages": [{"role": "user", "content": user_message}]},
-            context=AppContext(user_id=user_id),
+            context=AppContext(user_id=user_id, chat_id=chat_id),
             stream_mode="messages",
             version="v2",
         ):
@@ -116,7 +119,7 @@ New lines of conversation:
                 continue
 
             token, _metadata = chunk["data"]
-            text = token.text
+            text = sanitize_text(token.text)
             if text:
                 yield text
 
@@ -137,4 +140,4 @@ New lines of conversation:
                 "new_lines": new_lines,
             }
         )
-        return result.strip()
+        return sanitize_text(result).strip()

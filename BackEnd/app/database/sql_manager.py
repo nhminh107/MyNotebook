@@ -3,6 +3,7 @@ from supabase import create_client, Client
 from postgrest import APIError
 from dotenv import load_dotenv
 from BackEnd.app.database.sql_models import User, Document, Chunk
+from BackEnd.app.text_sanitizer import sanitize_text
 load_dotenv()
 
 
@@ -47,7 +48,7 @@ class Supabase_Manager():
             {
                 "chunk_id": chunk.chunk_id,
                 "document_id": chunk.document_id,
-                "content": chunk.content,
+                "content": sanitize_text(chunk.content),
             }
             for chunk in chunks
         ]
@@ -86,13 +87,13 @@ class Supabase_Manager():
 
         conversation = response.data["conversation"] or []
         conversation.append({
-            "user": user_message,
-            "chatbot": chatbot_message
+            "user": sanitize_text(user_message),
+            "chatbot": sanitize_text(chatbot_message)
         })
 
         data = {
             "conversation": conversation,
-            "summary": chat_summary
+            "summary": sanitize_text(chat_summary)
         }
 
 
