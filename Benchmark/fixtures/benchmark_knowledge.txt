@@ -1,0 +1,12 @@
+MyNotebook là ứng dụng hỏi đáp trên tài liệu sử dụng Retrieval-Augmented Generation.
+Hệ thống dùng VietRAG-Embed để tạo vector biểu diễn văn bản tiếng Việt. Văn bản được
+chia thành chunk có kích thước 400 token và overlap 60 token.
+
+Qdrant lưu dense vector và sparse BM25. Truy vấn kết hợp hai nguồn kết quả bằng
+Reciprocal Rank Fusion (RRF). Kết quả luôn được lọc theo user_id và chat_id để tránh
+rò rỉ tài liệu giữa người dùng hoặc cuộc hội thoại.
+
+Chế độ truy xuất thông thường trả lời dựa trên các đoạn tài liệu liên quan. Chế độ
+Agent chỉ dành cho tài khoản Pro và có thể dùng tìm kiếm tài liệu, web, máy tính và
+OCR ảnh. Câu trả lời được stream về client bằng Server-Sent Events (SSE).
+

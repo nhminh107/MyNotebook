@@ -1,0 +1,21 @@
+[live]
+base_url = "http://127.0.0.1:8000"
+user_id = "benchmark-user"
+chat_id_prefix = "benchmark"
+request_timeout_seconds = 120.0
+warmup_runs = 1
+iterations = 5
+concurrency = 1
+upload_fixture = "Benchmark/fixtures/benchmark_knowledge.txt"
+
+[thresholds]
+retrieval_hit_rate_at_k = 0.80
+retrieval_recall_at_k = 0.75
+router_accuracy = 0.80
+answer_token_f1 = 0.60
+fact_coverage = 0.80
+faithfulness = 0.75
+abstention_accuracy = 0.80
+functional_pass_rate = 1.0
+warm_p95_ms = 15000.0
+ttft_p95_ms = 5000.0
