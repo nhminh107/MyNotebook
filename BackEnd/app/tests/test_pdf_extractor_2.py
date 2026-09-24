@@ -8,6 +8,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from BackEnd.app.doc_extractor.extractor import PDFExtractor
 
 
@@ -37,7 +39,8 @@ def test_extract_book_and_print_first_page() -> None:
     pdf_path = Path(
         os.environ.get("PDF_EXTRACTOR_TEST_PDF", str(DEFAULT_PDF_PATH))
     ).expanduser()
-    assert pdf_path.is_file(), f"Test PDF does not exist: {pdf_path}"
+    if not pdf_path.is_file():
+        pytest.skip(f"Sample PDF not available: {pdf_path}")
 
     started_at = time.perf_counter()
     output = PDFExtractor().extract(str(pdf_path))
