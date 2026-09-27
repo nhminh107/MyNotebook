@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
 from collections import Counter
+import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
+import tempfile
 import unicodedata
 
 import pymupdf
@@ -170,6 +174,69 @@ class WordExtractor(BaseExtractor):
             "text": chunked_texts
         }]
 
+
+class PowerPointExtractor(BaseExtractor):
+    CONVERSION_TIMEOUT_SECONDS = 120
+
+    def __init__(self, pdf_extractor: PDFExtractor | None = None) -> None:
+        self.pdf_extractor = pdf_extractor or PDFExtractor()
+
+    def extract(self, file_path: str | Path) -> list[dict]:
+        presentation_path = Path(file_path)
+        if not presentation_path.is_file():
+            raise FileNotFoundError(f"PowerPoint file was not found: {presentation_path}")
+
+        with tempfile.TemporaryDirectory(prefix="ppt-to-pdf-") as output_directory:
+            pdf_path = self._convert_to_pdf(presentation_path, Path(output_directory))
+            return self.pdf_extractor.extract(pdf_path)
+
+    def _convert_to_pdf(self, presentation_path: Path, output_directory: Path) -> Path:
+        libreoffice = self._find_libreoffice()
+        command = [
+            libreoffice,
+            "--headless",
+            "--convert-to",
+            "pdf:impress_pdf_Export",
+            "--outdir",
+            str(output_directory),
+            str(presentation_path),
+        ]
+        try:
+            result = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=self.CONVERSION_TIMEOUT_SECONDS,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError("PowerPoint-to-PDF conversion timed out.") from error
+
+        pdf_path = output_directory / f"{presentation_path.stem}.pdf"
+        if result.returncode != 0 or not pdf_path.is_file():
+            details = (result.stderr or result.stdout).strip()
+            raise RuntimeError(
+                "Could not convert PowerPoint to PDF with LibreOffice. "
+                f"{details or 'No PDF was produced.'}"
+            )
+        return pdf_path
+
+    @staticmethod
+    def _find_libreoffice() -> str:
+        configured_path = os.environ.get("LIBREOFFICE_PATH")
+        if configured_path and Path(configured_path).is_file():
+            return configured_path
+
+        for command in ("soffice", "libreoffice"):
+            executable = shutil.which(command)
+            if executable:
+                return executable
+
+        raise RuntimeError(
+            "LibreOffice was not found. Install LibreOffice and add `soffice` to PATH, "
+            "or set LIBREOFFICE_PATH to the full path of soffice.exe."
+        )
+
 class TextExtractor(BaseExtractor):
 
     def extract(self, file_path: str):
@@ -189,6 +256,8 @@ class ExtractorFactory:
         extension = Path(file_path).suffix.lower()
         if extension == ".pdf": 
             return PDFExtractor()
+        if extension in {".ppt", ".pptx"}:
+            return PowerPointExtractor()
         if extension == ".docx" or extension == ".doc" or extension == ".docs": 
             return WordExtractor()
         if extension == ".txt": 
