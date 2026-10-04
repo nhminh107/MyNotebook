@@ -1,4 +1,8 @@
+import os
 CHUNKING_SIZE = 400
 CHUNKING_OVERLAP = 60
-QDRANT_URL="http://localhost:6333"
+QDRANT_URL = os.getenv(
+    "QDRANT_URL",
+    "http://localhost:6333"
+)
 EMBEDDING_SIZE=768
