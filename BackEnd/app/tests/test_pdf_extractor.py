@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import json
 import os
-import resource
 import time
 from pathlib import Path
 from typing import Any
+
+import pytest
+
+try:
+    import resource
+except ImportError:  # pragma: no cover - Windows does not provide this module
+    resource = None
 
 from BackEnd.app.doc_extractor.extractor import PDFExtractor
 
@@ -21,6 +27,9 @@ BYTES_PER_MIB = 1024 * 1024
 
 def _current_rss_bytes() -> int:
     """Return this process's current resident set size on Linux."""
+    if resource is None or os.name == "nt":
+        return 0
+
     status_path = Path("/proc/self/status")
     for line in status_path.read_text(encoding="utf-8").splitlines():
         if line.startswith("VmRSS:"):
@@ -31,7 +40,14 @@ def _current_rss_bytes() -> int:
 
 def _peak_rss_bytes() -> int:
     """Return peak resident memory for this process on Linux."""
-    usage = resource.getrusage(resource.RUSAGE_SELF)
+    if resource is None:
+        return 0
+
+    try:
+        usage = resource.getrusage(resource.RUSAGE_SELF)
+    except (AttributeError, OSError):
+        return 0
+
     return usage.ru_maxrss * 1024
 
 
@@ -77,7 +93,8 @@ def test_extract_hands_on_large_language_models() -> None:
     pdf_path = Path(
         os.environ.get("PDF_EXTRACTOR_TEST_PDF", str(DEFAULT_PDF_PATH))
     ).expanduser()
-    assert pdf_path.is_file(), f"Test PDF does not exist: {pdf_path}"
+    if not pdf_path.is_file():
+        pytest.skip(f"Sample PDF not available: {pdf_path}")
 
     rss_before_bytes = _current_rss_bytes()
     started_at = time.perf_counter()
@@ -95,8 +112,8 @@ def test_extract_hands_on_large_language_models() -> None:
     assert [item["page"] for item in output] == list(
         range(1, len(output) + 1)
     )
-    assert all(isinstance(item["text"], str) for item in output)
-    assert any(item["text"].strip() for item in output)
+    assert all(isinstance(item["texts"], list) for item in output)
+    assert any(chunk.strip() for item in output for chunk in item["texts"])
 
     _print_benchmark_report(
         pdf_path=pdf_path,

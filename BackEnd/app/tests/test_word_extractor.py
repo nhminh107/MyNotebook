@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import json
-import resource
+import os
 import time
 from pathlib import Path
 from typing import Any
 
 from docx import Document
+
+try:
+    import resource
+except ImportError:  # pragma: no cover - Windows does not provide this module
+    resource = None
 
 from BackEnd.app.doc_extractor.extractor import (
     ExtractorFactory,
@@ -26,6 +31,9 @@ BYTES_PER_MIB = 1024 * 1024
 
 def _current_rss_bytes() -> int:
     """Return this process's current resident set size on Linux."""
+    if resource is None or os.name == "nt":
+        return 0
+
     status_path = Path("/proc/self/status")
     for line in status_path.read_text(encoding="utf-8").splitlines():
         if line.startswith("VmRSS:"):
@@ -36,7 +44,14 @@ def _current_rss_bytes() -> int:
 
 def _peak_rss_bytes() -> int:
     """Return peak resident memory for this process on Linux."""
-    usage = resource.getrusage(resource.RUSAGE_SELF)
+    if resource is None:
+        return 0
+
+    try:
+        usage = resource.getrusage(resource.RUSAGE_SELF)
+    except (AttributeError, OSError):
+        return 0
+
     return usage.ru_maxrss * 1024
 
 
