@@ -10,7 +10,8 @@ services:
 
     env_file:
       - BackEnd/.env
-
+    volumes: 
+      - huggingface_cache:/root/.cache/huggingface
     depends_on:
       - qdrant
 
@@ -25,3 +26,4 @@ services:
 
 volumes:
   qdrant_data:
+  huggingface_cache:
