@@ -9,7 +9,7 @@ import pytest
 
 from BackEnd.app.database.sql_manager import Supabase_Manager
 from BackEnd.app.database.sql_models import Chunk
-from BackEnd.app.doc_extractor import extractor
+from BackEnd.app.doc_extractor import extractor, texts_chunking
 from BackEnd.app.pipeline import Pipeline
 
 BASE_COLUMNS = {"chunk_id", "document_id", "content"}
@@ -126,3 +126,20 @@ def test_pipeline_retains_qdrant_metadata_after_sql_fallback(monkeypatch) -> Non
     assert stored_chunk.chunk_index == 0
     assert stored_chunk.ocr_used is True
     assert sql.supabase.rows[0]["chunk_id"] == stored_chunk.chunk_id
+
+
+def test_counting_long_text_is_untruncated_and_final_chunks_are_bounded(caplog, monkeypatch) -> None:
+    monkeypatch.setattr(texts_chunking.tokenizer, "deprecation_warnings", {})
+    text = "document evidence " * 700
+    total = texts_chunking.token_length(text)
+    assert total > texts_chunking.tokenizer.model_max_length
+    chunks = texts_chunking.chunking(text)
+    assert len(chunks) > 1
+    assert all(texts_chunking.token_length(part) <= texts_chunking.CHUNKING_SIZE for part in chunks)
+    assert all(
+        len(texts_chunking.tokenizer.encode(f"passage: {part}", verbose=False)) <= 512
+        for part in chunks
+    )
+    assert not any("sequence length" in record.message for record in caplog.records)
+    # Repeated evidence after the first 512 tokens must still reach later chunks.
+    assert sum(texts_chunking.token_length(part) for part in chunks) >= total
