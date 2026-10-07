@@ -92,8 +92,8 @@ running.
 
 Answers can include clickable document references with filename, PDF page, and
 the extracted snippet. Source snapshots persist with each conversation turn.
-Apply the additive chunk metadata migration before uploading new files, and log
-in again to obtain the signed document-access session. See
+The additive chunk metadata migration enables SQL metadata storage; uploads also
+support the previous schema. Log in again to obtain the signed document-access session. See
 [`BackEnd/SOURCE_CITATIONS.md`](BackEnd/SOURCE_CITATIONS.md) for setup, the SSE
 contract, legacy metadata handling, and access-controlled retrieval diagnostics.
 

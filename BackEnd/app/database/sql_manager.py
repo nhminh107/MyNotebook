@@ -1,10 +1,18 @@
 import os
+import logging
+import re
 from supabase import create_client, Client
 from postgrest import APIError
 from dotenv import load_dotenv
 from BackEnd.app.database.sql_models import User, Document, Chunk
 from BackEnd.app.text_sanitizer import sanitize_text
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+CHUNK_METADATA_COLUMNS = frozenset({"page", "chunk_index", "ocr_used"})
+MISSING_CHUNK_COLUMN = re.compile(
+    r"Could not find the '([^']+)' column of 'chunks' in the schema cache"
+)
 
 
 class Supabase_Manager():
@@ -13,6 +21,7 @@ class Supabase_Manager():
             os.environ.get("SUPABASE_URL"),
             os.environ.get("SUPABASE_PUBLISHABLE_KEY")
         )
+        self._missing_chunk_metadata: set[str] = set()
 
     def insert_user(self, user: User): 
         data = {
@@ -56,14 +65,38 @@ class Supabase_Manager():
             for chunk in chunks
         ]
 
-        response = (
-            self.supabase
-            .table("chunks")
-            .insert(data)
-            .execute()
-        )
-
-        return response.data
+        missing = set(getattr(self, "_missing_chunk_metadata", set()))
+        while True:
+            compatible_data = [
+                {key: value for key, value in row.items() if key not in missing}
+                for row in data
+            ]
+            try:
+                response = (
+                    self.supabase.table("chunks")
+                    .insert(compatible_data)
+                    .execute()
+                )
+                return response.data
+            except APIError as exc:
+                match = MISSING_CHUNK_COLUMN.fullmatch(exc.message or "")
+                column = match.group(1) if match else None
+                if (
+                    exc.code != "PGRST204"
+                    or column not in CHUNK_METADATA_COLUMNS
+                    or column in missing
+                ):
+                    raise
+                # PGRST204 rejects the insert before writing any rows, so retry
+                # only this known schema mismatch without duplicating chunks.
+                missing.add(column)
+                self._missing_chunk_metadata = missing.copy()
+                logger.warning(
+                    "Supabase chunks lacks optional column %s; SQL inserts will "
+                    "omit it. Qdrant and citation snapshots retain source metadata. "
+                    "Apply the source metadata migration and restart to store it in SQL.",
+                    column,
+                )
 
     def init_chat_history(self, chat_id: str, user_id: str):
         data = {

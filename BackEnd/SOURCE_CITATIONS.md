@@ -1,8 +1,10 @@
 # Document sources and retrieval traces
 
 The web frontend requests citations with `include_sources: true` on either
-`/documents/retrieval/stream` or `/documents/retrieval/agent-stream`. Apply the
-[source metadata migration](migrations/README.md) before uploading documents.
+`/documents/retrieval/stream` or `/documents/retrieval/agent-stream`. The previous SQL chunks schema remains supported. The optional
+[source metadata migration](migrations/README.md) enables SQL storage of page,
+chunk index and OCR metadata; Qdrant and citation snapshots retain these fields
+even without the migration. Restart after migration to refresh schema capabilities.
 
 ## Authentication
 

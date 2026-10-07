@@ -1,7 +1,11 @@
 # Source metadata migration
 
-Apply `001_source_metadata.sql` in the Supabase SQL editor before uploading new
-files with this version. The migration adds nullable `page`, `chunk_index`, and
+Apply `001_source_metadata.sql` in the Supabase SQL editor to also store source
+metadata in SQL. Uploads remain compatible with the previous chunks schema: the
+SQL adapter retries only PGRST204 errors identifying a missing optional metadata
+column, omits that column, and logs a warning. Existing metadata columns are kept;
+other SQL errors propagate. Qdrant and chat citation snapshots retain the metadata.
+Restart the backend after applying the migration to clear cached missing columns. The migration adds nullable `page`, `chunk_index`, and
 `ocr_used` columns to `public.chunks`. It is additive and can be applied again.
 Verify the target schema is `public` before applying it to another deployment.
 
