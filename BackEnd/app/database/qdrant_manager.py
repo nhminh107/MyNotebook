@@ -5,7 +5,8 @@ from qdrant_client.models import (
     KeywordIndexParams,
     KeywordIndexType, SparseVectorParams, Modifier, SparseVector, Prefetch, Fusion, FusionQuery)
 from BackEnd.app.CONFIG import QDRANT_URL, EMBEDDING_SIZE
-from BackEnd.app.database.sql_models import User, Document
+from BackEnd.app.database.sql_models import Chunk, Document
+from BackEnd.app.retrieval_models import RetrievalHit
 from fastembed import SparseTextEmbedding
 import uuid 
 
@@ -45,19 +46,37 @@ class QDrant:
                     is_tenant=True,
                 ),
             )
-    def add(self, embedding_vecs, texts: list[str], user: str, doc: Document, chat_id: str):
+    def add(self, embedding_vecs, texts: list[str], user: str, doc: Document, chat_id: str, chunks: list[Chunk] | None = None):
+        if len(embedding_vecs) != len(texts):
+            raise ValueError("Embedding and chunk counts must match.")
+        if chunks is not None and (len(chunks) != len(texts) or any(
+            chunk.content != text or chunk.document_id != doc.document_id
+            for chunk, text in zip(chunks, texts)
+        )):
+            raise ValueError("Chunk metadata must match document and text order.")
         ids = []
         payloads = []
 
         sparse_vectors = list(self.bm25_model.embed(texts))
-        for text in texts:
-            ids.append(str(uuid.uuid4()))
+        for index, text in enumerate(texts):
+            chunk = chunks[index] if chunks is not None else None
+            point_id = chunk.chunk_id if chunk else str(uuid.uuid4())
+            ids.append(point_id)
             payloads.append({
                 "user_id": user,
                 "document_id": doc.document_id,
                 "content": text,
-                "chat_id": chat_id
+                "chat_id": chat_id,
+                "chunk_id": chunk.chunk_id if chunk else None,
+                "file_name": doc.file_name,
+                "page": chunk.page if chunk else None,
+                "chunk_index": chunk.chunk_index if chunk else None,
+                "ocr_used": chunk.ocr_used if chunk else None,
+                "metadata_version": 2,
             })
+
+        if len(set(ids)) != len(ids):
+            raise ValueError("Chunk IDs must be unique within a batch.")
 
         points = Batch(
             ids=ids, 
@@ -82,12 +101,15 @@ class QDrant:
         except Exception as e:
             raise e
 
-    def search(self, user_id: str, query_text: str, query_embedding, chat_id: str, limit: int = 10, doc_id: str = None) -> str:
+    def search_hits(self, user_id: str, query_text: str, query_embedding, chat_id: str, limit: int = 10, doc_id: str | None = None) -> list[RetrievalHit]:
+        if limit < 1 or limit > 100:
+            raise ValueError("Retrieval limit must be between 1 and 100.")
         conditions = [
             FieldCondition(
                 key="user_id",
                 match=MatchValue(value=user_id)
-            )
+            ),
+            FieldCondition(key="chat_id", match=MatchValue(value=chat_id)),
         ]
 
         if doc_id:
@@ -97,14 +119,6 @@ class QDrant:
                     match=MatchValue(value=doc_id)
                 )
             )
-        else:
-            conditions.append(
-                FieldCondition(
-                    key="chat_id",
-                    match=MatchValue(value=chat_id)
-                )
-            )
-
         query_filter = Filter(must=conditions)
         sparse_embedding = next(self.bm25_model.query_embed(query_text))
         sparse_query = SparseVector(
@@ -130,15 +144,36 @@ class QDrant:
                 )
             ],
             query=FusionQuery(fusion=Fusion.RRF),
-            limit=limit
+            limit=limit,
+            query_filter=query_filter,
+            with_payload=True,
+            with_vectors=False,
         )
 
-        contents = [
-            point.payload["content"]
-            for point in result.points
-            if point.payload and "content" in point.payload
-        ]
+        hits = []
+        for rank, point in enumerate(result.points, start=1):
+            payload = point.payload or {}
+            if not payload.get("content") or not payload.get("document_id"):
+                continue
+            hits.append(RetrievalHit(
+                chunk_id=payload.get("chunk_id"),
+                qdrant_point_id=str(point.id),
+                document_id=payload["document_id"],
+                file_name=payload.get("file_name") or "",
+                page=payload.get("page"),
+                chunk_index=payload.get("chunk_index"),
+                ocr_used=payload.get("ocr_used"),
+                content=payload["content"],
+                score=point.score,
+                retrieval_rank=rank,
+                metadata_version=payload.get("metadata_version", 1),
+            ))
+        return hits
+
+    def search(self, user_id: str, query_text: str, query_embedding,
+               chat_id: str, limit: int = 10, doc_id: str | None = None) -> str:
+        """Keep the text-only contract for existing callers."""
+        hits = self.search_hits(user_id, query_text, query_embedding, chat_id, limit, doc_id)
         return "\n\n".join(
-            f"{index}. {content}"
-            for index, content in enumerate(contents, start=1)
+            f"{index}. {hit.content}" for index, hit in enumerate(hits, start=1)
         )

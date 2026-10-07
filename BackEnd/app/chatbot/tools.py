@@ -3,7 +3,6 @@ import json
 import logging
 import mimetypes
 import os
-from dataclasses import dataclass
 from pathlib import Path
 
 from ddgs import DDGS
@@ -15,6 +14,7 @@ from langchain_core.tools import StructuredTool
 from langchain_openai import ChatOpenAI
 from langchain.tools import ToolRuntime
 
+from BackEnd.app.retrieval_models import AppContext, format_retrieval_context
 from BackEnd.app.database.qdrant_manager import QDrant
 from BackEnd.app.text_input.Embedding import EmbeddingModel
 
@@ -25,12 +25,6 @@ logger = logging.getLogger(__name__)
 WEB_SEARCH_BACKENDS = ("duckduckgo", "brave", "google", "startpage")
 WEB_SEARCH_MAX_RESULTS = 5
 WEB_SEARCH_TIMEOUT_SECONDS = 10
-
-
-@dataclass
-class AppContext:
-    user_id: str
-    chat_id: str
 
 
 class ToolList:
@@ -158,6 +152,17 @@ class ToolList:
         user_id = runtime.context.user_id
         chat_id = runtime.context.chat_id
         
+        if runtime.context.sources is not None:
+            hits = self.qdrant.search_hits(
+                user_id=user_id, query_text=query, query_embedding=query_embedding,
+                chat_id=chat_id, limit=max(1, min(limit, 20)),
+            )
+            hits = [hit.model_copy(update={
+                "file_name": hit.file_name or runtime.context.document_names.get(hit.document_id, ""),
+            }) for hit in hits]
+            sources = runtime.context.sources.register(hits)
+            return format_retrieval_context(sources)
+
         return self.qdrant.search(
             user_id=user_id,
             query_text=query,

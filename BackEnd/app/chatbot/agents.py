@@ -1,6 +1,5 @@
 import os
 from collections.abc import Iterator
-from dataclasses import dataclass
 
 from dotenv import load_dotenv
 from langchain.agents import create_agent
@@ -10,15 +9,12 @@ from langchain_openai import ChatOpenAI
 from langchain.agents.middleware import ToolCallLimitMiddleware
 
 from BackEnd.app.chatbot.tools import ToolList
+from BackEnd.app.retrieval_models import (
+    AppContext, CITATION_INSTRUCTIONS, PipelineEvent, SourceRegistry,
+)
 from BackEnd.app.text_sanitizer import sanitize_text
 
 load_dotenv()
-
-
-@dataclass
-class AppContext:
-    user_id: str
-    chat_id: str
 
 
 MINTROUTE_API = os.getenv("LLM_API_KEY")
@@ -140,3 +136,43 @@ New lines of conversation:
             }
         )
         return sanitize_text(result).strip()
+
+    def stream_events(self, user_prompt: str, memory: str, user_id: str,
+                      chat_id: str, registry: SourceRegistry,
+                      document_names: dict[str, str]) -> Iterator[PipelineEvent]:
+        """Expose evidence and final model text, suppressing pre-tool narration."""
+        context = AppContext(user_id, chat_id, registry, document_names)
+        message = (
+            f"Conversation summary:\n{memory or '(none)'}\n\n"
+            f"Question:\n{user_prompt}\n\n"
+            "For this answer, source citations are required and are not raw retrieval numbering.\n"
+            + CITATION_INSTRUCTIONS
+        )
+        pending = []
+        emitted_sources = []
+        for chunk in self._agent.stream(
+            {"messages": [{"role": "user", "content": message}]},
+            context=context, stream_mode=["messages", "updates"], version="v2",
+        ):
+            sources = registry.snapshot()
+            if sources != emitted_sources:
+                emitted_sources = sources
+                yield PipelineEvent(event="sources", payload={"sources": sources})
+            if chunk["type"] == "messages":
+                token, metadata = chunk["data"]
+                if metadata.get("langgraph_node") == "model":
+                    text = sanitize_text(token.text)
+                    if text:
+                        pending.append(text)
+            elif chunk["type"] == "updates":
+                update = chunk["data"].get("model", {})
+                messages = update.get("messages", [])
+                if not messages:
+                    continue
+                final_message = messages[-1]
+                if not getattr(final_message, "tool_calls", None):
+                    final_tokens = pending or [sanitize_text(final_message.text)]
+                    for text in final_tokens:
+                        if text:
+                            yield PipelineEvent(event="token", payload={"content": text})
+                pending = []

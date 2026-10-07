@@ -17,6 +17,11 @@ const state = {
 };
 
 const elements = {
+  sourceDialog: document.querySelector("#source-dialog"),
+  sourceTitle: document.querySelector("#source-title"),
+  sourceLocation: document.querySelector("#source-location"),
+  sourceSnippet: document.querySelector("#source-snippet"),
+  closeSource: document.querySelector("#close-source"),
   themeToggle: document.querySelector("#theme-toggle"),
   attachFileButton: document.querySelector("#attach-file-button"),
   authScreen: document.querySelector("#auth-screen"),
@@ -90,7 +95,7 @@ async function apiRequest(path, options = {}) {
   let response;
 
   try {
-    response = await fetch(path, options);
+    response = await fetch(path, { credentials: "same-origin", ...options });
   } catch {
     throw new Error("Không thể kết nối tới API. Hãy kiểm tra FastAPI đang chạy.");
   }
@@ -103,6 +108,7 @@ async function apiRequest(path, options = {}) {
   }
 
   if (!response.ok) {
+    if (response.status === 401 && path.startsWith("/documents/")) expireSession();
     throw new Error(getErrorMessage(payload, `Yêu cầu thất bại với mã ${response.status}.`));
   }
 
@@ -296,8 +302,91 @@ function renderMarkdown(markdown) {
   return output.join("");
 }
 
-function renderMarkdownInto(element, markdown) {
+function renderMarkdownInto(element, markdown, sources = []) {
   element.innerHTML = renderMarkdown(markdown);
+  const sourceMap = new Map(sources.map((source) => [source.citation_id, source]));
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((node) => {
+    if (node.parentElement.closest("code, pre, a")) return;
+    const pattern = /\[\[source:([1-9]\d*)\]\]/g;
+    const matches = [...node.textContent.matchAll(pattern)];
+    if (!matches.length) return;
+    const fragment = document.createDocumentFragment();
+    let position = 0;
+    matches.forEach((match) => {
+      fragment.append(node.textContent.slice(position, match.index));
+      const id = Number(match[1]);
+      const source = sourceMap.get(id);
+      const marker = document.createElement(source ? "button" : "span");
+      marker.className = source ? "citation-button" : "citation-invalid";
+      marker.textContent = source ? "[" + id + "]" : "[nguồn không xác định]";
+      if (source) {
+        marker.type = "button";
+        marker.dataset.citationId = String(id);
+        marker.setAttribute("aria-label", "Xem nguồn " + id + ": " + (source.file_name || "Tài liệu"));
+      }
+      fragment.append(marker);
+      position = match.index + match[0].length;
+    });
+    fragment.append(node.textContent.slice(position));
+    node.replaceWith(fragment);
+  });
+}
+
+function renderMessageSources(message) {
+  message.querySelector(".message-sources")?.remove();
+  const sources = message.citationData?.sources || [];
+  const ids = new Set([...message.querySelectorAll(".message-text .citation-button")]
+    .map((button) => Number(button.dataset.citationId)));
+  const cited = sources.filter((source) => ids.has(source.citation_id));
+  if (!cited.length) return;
+  const section = document.createElement("section");
+  section.className = "message-sources";
+  section.setAttribute("aria-label", "Nguồn được trích dẫn");
+  const label = document.createElement("p");
+  label.className = "sources-label";
+  label.textContent = "Nguồn";
+  section.append(label);
+  cited.forEach((source) => {
+    const button = document.createElement("button");
+    button.className = "source-card citation-button";
+    button.type = "button";
+    button.dataset.citationId = String(source.citation_id);
+    const title = document.createElement("span");
+    title.textContent = "[" + source.citation_id + "] " + (source.file_name || "Tài liệu không có tên");
+    const location = document.createElement("small");
+    location.textContent = source.page ? "Trang " + source.page : "Đoạn trích · chưa có số trang";
+    button.append(title, location);
+    section.append(button);
+  });
+  message.querySelector(".message-content").append(section);
+}
+
+function showSource(source) {
+  elements.sourceTitle.textContent = source.file_name || "Tài liệu không có tên";
+  elements.sourceLocation.textContent = source.page ? "Trang " + source.page : "Chưa có thông tin số trang";
+  if (source.ocr_used) elements.sourceLocation.textContent += " · Nhận dạng bằng OCR";
+  elements.sourceSnippet.textContent = source.content || "Không có nội dung đoạn trích.";
+  elements.sourceDialog.showModal();
+  elements.sourceSnippet.scrollTop = 0;
+}
+
+function expireSession() {
+  localStorage.removeItem(storageKeys.user);
+  state.user = null;
+  state.chats = [];
+  state.documents = [];
+  state.messages = [];
+  elements.messageList.replaceChildren();
+  elements.emptyState.classList.remove("is-hidden");
+  renderDocuments();
+  renderChatHistory();
+  elements.sourceDialog.close();
+  closeSidebar();
+  showApplication();
+  elements.authError.textContent = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
 }
 
 function parseSseEvent(block) {
@@ -323,13 +412,14 @@ function parseSseEvent(block) {
   };
 }
 
-async function streamRetrieval(request, onToken, mode = "retrieval") {
+async function streamRetrieval(request, onToken, mode = "retrieval", onMetadata = () => {}) {
   const endpoint = mode === "agent"
     ? "/documents/retrieval/agent-stream"
     : "/documents/retrieval/stream";
   let response;
   try {
     response = await fetch(endpoint, {
+      credentials: "same-origin",
       method: "POST",
       headers: {
         Accept: "text/event-stream",
@@ -342,6 +432,7 @@ async function streamRetrieval(request, onToken, mode = "retrieval") {
   }
 
   if (!response.ok) {
+    if (response.status === 401) expireSession();
     let payload = null;
     try {
       payload = await response.json();
@@ -364,6 +455,7 @@ async function streamRetrieval(request, onToken, mode = "retrieval") {
     while (true) {
       const { done, value } = await reader.read();
       buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      buffer = buffer.replace(/\r\n/g, "\n");
 
       let boundaryIndex = buffer.indexOf("\n\n");
       while (boundaryIndex >= 0) {
@@ -373,6 +465,8 @@ async function streamRetrieval(request, onToken, mode = "retrieval") {
 
         if (streamEvent?.event === "token") {
           onToken(streamEvent.payload.content || "");
+        } else if (["sources", "citations"].includes(streamEvent?.event)) {
+          onMetadata(streamEvent.event, streamEvent.payload);
         } else if (streamEvent?.event === "error") {
           throw new Error(streamEvent.payload.detail || "Streaming thất bại.");
         } else if (streamEvent?.event === "done") {
@@ -476,12 +570,22 @@ function showApplication() {
   state.chatId = readStorage(storageKeys.currentChat(state.user.user_id), null) || createChatId();
   writeStorage(storageKeys.currentChat(state.user.user_id), state.chatId);
   state.documents = [];
+  state.chats = [];
   renderDocuments();
+  renderChatHistory();
+  resetConversation();
   initializeChatHistory();
   window.setTimeout(() => elements.questionInput.focus(), 0);
 }
 
-function handleLogout() {
+async function handleLogout() {
+  try {
+    await apiRequest("/auth/logout", { method: "POST" });
+  } catch (error) {
+    elements.chatContext.textContent = error.message;
+    return;
+  }
+  elements.sourceDialog.close();
   localStorage.removeItem(storageKeys.user);
   state.user = null;
   state.chatId = null;
@@ -497,7 +601,7 @@ function handleLogout() {
 function getChatTitle(chat) {
   const firstTurn = Array.isArray(chat.conversation) ? chat.conversation[0] : null;
   const firstMessage = firstTurn?.user?.trim();
-  return firstMessage || `Cuộc trò chuyện ${chat.chat_id.slice(0, 8)}`;
+  return chat.title || firstMessage || `Cuộc trò chuyện ${chat.chat_id.slice(0, 8)}`;
 }
 
 function renderChatHistory() {
@@ -518,6 +622,7 @@ function renderChatHistory() {
 
     const button = document.createElement("button");
     button.type = "button";
+    button.disabled = state.isSending || state.isUploading;
     button.classList.toggle("is-active", chat.chat_id === state.chatId);
 
     const title = document.createElement("span");
@@ -549,7 +654,7 @@ function renderConversation() {
   } else {
     elements.emptyState.classList.add("is-hidden");
     state.messages.forEach((message) => {
-      elements.messageList.append(createMessage(message.role, message.text));
+      elements.messageList.append(createMessage(message.role, message.text, { metadata: message }));
     });
   }
 
@@ -572,6 +677,7 @@ async function selectChat(chatId) {
   const payload = await apiRequest(
     `/documents/chats/${encodeURIComponent(state.user.user_id)}/${encodeURIComponent(chatId)}`,
   );
+  elements.sourceDialog.close();
   const { chat, documents } = payload.data;
 
   state.chatId = chat.chat_id;
@@ -585,7 +691,7 @@ async function selectChat(chatId) {
 
   (chat.conversation || []).forEach((turn) => {
     state.messages.push({ role: "user", text: turn.user || "" });
-    state.messages.push({ role: "assistant", text: turn.chatbot || "" });
+    state.messages.push({ role: "assistant", text: turn.chatbot || "", sources: turn.sources || [], turn_id: turn.turn_id, cited_source_ids: turn.cited_source_ids || [] });
   });
 
   renderDocuments();
@@ -670,6 +776,7 @@ async function handleFileUpload() {
   formData.append("chat_id", state.chatId);
   formData.append("file", file);
   state.isUploading = true;
+  syncConversationControls();
   elements.fileInput.disabled = true;
   elements.attachFileButton.disabled = true;
   elements.chatContext.textContent = `Đang xử lý ${file.name}`;
@@ -691,6 +798,7 @@ async function handleFileUpload() {
     elements.chatContext.textContent = "Tải tài liệu thất bại";
   } finally {
     state.isUploading = false;
+    syncConversationControls();
     elements.fileInput.disabled = false;
     elements.attachFileButton.disabled = false;
     elements.fileInput.value = "";
@@ -700,6 +808,7 @@ async function handleFileUpload() {
 function createMessage(role, text, options = {}) {
   const message = document.createElement("article");
   message.className = `message ${role}`;
+  message.citationData = options.metadata || { sources: [] };
   if (options.error) {
     message.classList.add("error");
   }
@@ -730,7 +839,7 @@ function createMessage(role, text, options = {}) {
 
     if (role === "assistant" && !options.error) {
       messageBody.classList.add("markdown-body");
-      renderMarkdownInto(messageBody, text);
+      renderMarkdownInto(messageBody, text, message.citationData.sources);
     } else {
       messageBody.textContent = text;
     }
@@ -739,6 +848,7 @@ function createMessage(role, text, options = {}) {
   }
 
   message.append(avatar, content);
+  if (role === "assistant" && !options.loading) renderMessageSources(message);
   return message;
 }
 
@@ -748,8 +858,18 @@ function scrollToLatestMessage() {
   });
 }
 
+function syncConversationControls() {
+  const busy = state.isSending || state.isUploading;
+  elements.newChatButton.disabled = busy;
+  elements.logoutButton.disabled = busy;
+  elements.attachFileButton.disabled = busy;
+  elements.fileInput.disabled = busy;
+  elements.chatHistoryList.querySelectorAll("button").forEach((button) => { button.disabled = busy; });
+}
+
 function setSending(isSending) {
   state.isSending = isSending;
+  syncConversationControls();
   elements.sendButton.disabled = isSending;
   elements.questionInput.disabled = isSending;
   elements.answerMode.disabled = isSending;
@@ -777,7 +897,7 @@ async function handleQuestionSubmit(event) {
   event.preventDefault();
   const question = elements.questionInput.value.trim();
 
-  if (!question || !state.user || state.isSending) {
+  if (!question || !state.user || state.isSending || state.isUploading) {
     return;
   }
 
@@ -796,6 +916,7 @@ async function handleQuestionSubmit(event) {
   scrollToLatestMessage();
 
   let answer = "";
+  const citationData = { sources: [], cited_source_ids: [] };
   let assistantMessage = null;
   let assistantBody = null;
   let renderFrame = null;
@@ -806,6 +927,7 @@ async function handleQuestionSubmit(event) {
         user_id: state.user.user_id,
         chat_id: state.chatId,
         user_query: question,
+        include_sources: true,
       },
       (token) => {
         if (!token) {
@@ -814,20 +936,34 @@ async function handleQuestionSubmit(event) {
 
         answer += token;
         if (!assistantMessage) {
-          assistantMessage = createMessage("assistant", "");
+          assistantMessage = createMessage("assistant", "", { metadata: citationData });
           assistantBody = assistantMessage.querySelector(".message-text");
           loadingMessage.replaceWith(assistantMessage);
         }
 
         if (!renderFrame) {
           renderFrame = window.requestAnimationFrame(() => {
-            renderMarkdownInto(assistantBody, answer);
+            renderMarkdownInto(assistantBody, answer, citationData.sources);
+            renderMessageSources(assistantMessage);
             renderFrame = null;
             scrollToLatestMessage();
           });
         }
       },
       answerMode,
+      (event, payload) => {
+        if (event === "sources") {
+          citationData.sources = Array.isArray(payload.sources) ? payload.sources : [];
+          citationData.turn_id = payload.turn_id;
+        } else {
+          citationData.cited_source_ids = payload.cited_source_ids || [];
+          citationData.saved = payload.saved === true;
+        }
+        if (assistantBody) {
+          renderMarkdownInto(assistantBody, answer, citationData.sources);
+          renderMessageSources(assistantMessage);
+        }
+      },
     );
 
     if (renderFrame) {
@@ -837,12 +973,13 @@ async function handleQuestionSubmit(event) {
 
     answer = answer || "Không tìm thấy câu trả lời phù hợp trong tài liệu.";
     if (!assistantMessage) {
-      assistantMessage = createMessage("assistant", answer);
+      assistantMessage = createMessage("assistant", answer, { metadata: citationData });
       loadingMessage.replaceWith(assistantMessage);
     } else {
-      renderMarkdownInto(assistantBody, answer);
+      renderMarkdownInto(assistantBody, answer, citationData.sources);
+      renderMessageSources(assistantMessage);
     }
-    state.messages.push({ role: "assistant", text: answer });
+    state.messages.push({ role: "assistant", text: answer, ...citationData });
     await loadChatHistory();
     elements.chatContext.textContent = answerMode === "agent"
       ? "Agent đã hoàn tất câu trả lời"
@@ -870,6 +1007,7 @@ async function handleQuestionSubmit(event) {
 }
 
 function resetConversation() {
+  elements.sourceDialog.close();
   state.messages = [];
   elements.messageList.replaceChildren();
   elements.emptyState.classList.remove("is-hidden");
@@ -936,6 +1074,7 @@ elements.authTabs.forEach((tab) => {
 elements.authForm.addEventListener("submit", handleAuthSubmit);
 elements.logoutButton.addEventListener("click", handleLogout);
 elements.newChatButton.addEventListener("click", () => {
+  if (state.isSending || state.isUploading) return;
   state.chatId = createChatId();
   writeStorage(storageKeys.currentChat(state.user.user_id), state.chatId);
   state.documents = [];
@@ -988,3 +1127,25 @@ applyTheme(readStorage(storageKeys.theme, "light"));
 syncSidebarAccessibility();
 setAuthMode("login");
 showApplication();
+
+let sourceReturnFocus = null;
+elements.messageList.addEventListener("click", (event) => {
+  const button = event.target.closest(".citation-button");
+  if (!button) return;
+  const message = button.closest(".message");
+  const source = message?.citationData?.sources?.find((item) => item.citation_id === Number(button.dataset.citationId));
+  if (source) {
+    sourceReturnFocus = button;
+    showSource(source);
+  }
+});
+elements.closeSource.addEventListener("click", () => elements.sourceDialog.close());
+elements.sourceDialog.addEventListener("close", () => {
+  if (sourceReturnFocus?.isConnected) sourceReturnFocus.focus();
+  sourceReturnFocus = null;
+});
+elements.sourceDialog.addEventListener("click", (event) => {
+  if (event.target !== elements.sourceDialog) return;
+  const bounds = elements.sourceDialog.getBoundingClientRect();
+  if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) elements.sourceDialog.close();
+});

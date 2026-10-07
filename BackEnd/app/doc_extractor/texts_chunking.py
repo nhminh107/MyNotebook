@@ -6,11 +6,14 @@ from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained(
     "intfloat/multilingual-e5-base"
 )
-def token_length(text: str): 
+def token_length(text: str) -> int:
+    """Count the entire candidate text before splitting, without model inference."""
     return len(
         tokenizer.encode(
             text, 
-            add_special_tokens=False
+            add_special_tokens=False,
+            truncation=False,
+            verbose=False,
         )
     )
 
@@ -57,4 +60,3 @@ Cách này truy xuất nhiều chunk ban đầu, chấm lại mức độ liên 
 chunk, sau đó chỉ đưa các chunk tốt nhất vào prompt.
 Nhờ cấu trúc này, project vừa cung cấp một ứng dụng NotebookLM đơn giản có thể sử dụng
 thực tế, vừa có cơ chế đánh giá để lựa chọn cấu hình retrieval phù hợp hơn cho tài liệu học tập."""
-

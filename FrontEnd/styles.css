@@ -249,3 +249,26 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+.citation-button { display: inline; padding: 1px 5px; border-radius: 6px; background: var(--soft); color: var(--ink); font-size: 0.8em; font-weight: 500; vertical-align: baseline; }
+.citation-button:hover { background: var(--hover); }
+.citation-invalid { color: var(--muted); font-size: 0.8em; }
+.message-sources { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+.sources-label { width: 100%; margin: 0; color: var(--muted); font-size: 12px; }
+.source-card { display: flex; flex-direction: column; gap: 5px; max-width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: transparent; text-align: left; }
+.source-card span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.source-card small { color: var(--muted); font-size: 10px; }
+.source-dialog { position: fixed; inset: 16px 16px 16px auto; width: min(420px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); margin: 0; padding: 24px; border: 1px solid var(--border); border-radius: 20px; background: var(--canvas); color: var(--ink); box-shadow: 0 12px 60px #00000026; }
+.source-dialog[open] { display: flex; flex-direction: column; }
+.source-dialog::backdrop { background: #00000030; }
+.source-dialog-header { display: flex; align-items: flex-start; gap: 12px; }
+.source-dialog-header > div { min-width: 0; flex: 1; }
+.source-dialog-header h2 { margin: 6px 0 0; overflow-wrap: anywhere; font-size: 18px; font-weight: 600; line-height: 1.5; }
+.source-eyebrow { margin: 0; color: var(--muted); font-size: 12px; }
+#close-source { font-size: 25px; }
+.source-location { margin: 16px 0; color: var(--muted); font-size: 12px; }
+.source-snippet { min-height: 0; flex: 1; padding: 18px; overflow: auto; border-radius: 12px; background: var(--soft); font-size: 14px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.source-note { margin: 16px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+@media (max-width: 560px) {
+  .source-dialog { inset: auto 0 0; width: 100%; max-height: 85dvh; padding: 22px 18px max(22px, env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; }
+}

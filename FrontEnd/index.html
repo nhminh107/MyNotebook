@@ -8,8 +8,8 @@
       content="Notebook giúp tải tài liệu và hỏi đáp trực tiếp từ nội dung của bạn."
     />
     <title>Notebook | Hỏi đáp tài liệu</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20261007-1" />
-    <script src="/static/app.js?v=20261007-1" defer></script>
+    <link rel="stylesheet" href="/static/styles.css?v=20261007-2" />
+    <script src="/static/app.js?v=20261007-2" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#question-input">Chuyển đến ô nhập câu hỏi</a>
@@ -236,5 +236,14 @@
         </div>
       </main>
     </div>
+    <dialog class="source-dialog" id="source-dialog" aria-labelledby="source-title">
+      <header class="source-dialog-header">
+        <div><p class="source-eyebrow">Nguồn tài liệu</p><h2 id="source-title"></h2></div>
+        <button class="icon-button" id="close-source" type="button" aria-label="Đóng đoạn trích">×</button>
+      </header>
+      <p class="source-location" id="source-location"></p>
+      <div class="source-snippet" id="source-snippet" tabindex="0"></div>
+      <p class="source-note">Đoạn trích đã được cung cấp cho mô hình khi tạo câu trả lời này.</p>
+    </dialog>
   </body>
 </html>
