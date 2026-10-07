@@ -1,4 +1,5 @@
 const storageKeys = {
+  theme: "notebook.theme",
   user: "notebook.currentUser",
   currentChat: (userId) => `notebook.currentChat.${userId}`,
 };
@@ -16,6 +17,8 @@ const state = {
 };
 
 const elements = {
+  themeToggle: document.querySelector("#theme-toggle"),
+  attachFileButton: document.querySelector("#attach-file-button"),
   authScreen: document.querySelector("#auth-screen"),
   appShell: document.querySelector("#app-shell"),
   authForm: document.querySelector("#auth-form"),
@@ -47,6 +50,7 @@ const elements = {
   questionInput: document.querySelector("#question-input"),
   sendButton: document.querySelector("#send-button"),
   suggestions: document.querySelectorAll("[data-prompt]"),
+  chatLayout: document.querySelector(".chat-layout"),
   sidebar: document.querySelector("#sidebar"),
   sidebarScrim: document.querySelector("#sidebar-scrim"),
   openSidebar: document.querySelector("#open-sidebar"),
@@ -667,6 +671,7 @@ async function handleFileUpload() {
   formData.append("file", file);
   state.isUploading = true;
   elements.fileInput.disabled = true;
+  elements.attachFileButton.disabled = true;
   elements.chatContext.textContent = `Đang xử lý ${file.name}`;
   setUploadStatus(`Đang tải ${file.name}...`);
 
@@ -687,6 +692,7 @@ async function handleFileUpload() {
   } finally {
     state.isUploading = false;
     elements.fileInput.disabled = false;
+    elements.attachFileButton.disabled = false;
     elements.fileInput.value = "";
   }
 }
@@ -747,7 +753,9 @@ function setSending(isSending) {
   elements.sendButton.disabled = isSending;
   elements.questionInput.disabled = isSending;
   elements.answerMode.disabled = isSending;
-  elements.sendButton.textContent = isSending ? "Đợi..." : "Gửi";
+  elements.sendButton.classList.toggle("is-loading", isSending);
+  elements.sendButton.setAttribute("aria-label", isSending ? "Đang tạo câu trả lời" : "Gửi câu hỏi");
+  elements.sendButton.title = isSending ? "Đang tạo câu trả lời" : "Gửi câu hỏi";
   elements.chatForm.setAttribute("aria-busy", String(isSending));
 }
 
@@ -762,7 +770,7 @@ function configureAnswerMode() {
   elements.answerMode.value = state.answerMode;
   elements.composerNote.textContent = state.answerMode === "agent"
     ? "Agent có thể dùng tài liệu và công cụ bổ sung. Hãy kiểm tra lại thông tin quan trọng."
-    : "Câu trả lời được tạo từ dữ liệu retrieval. Hãy kiểm tra lại thông tin quan trọng.";
+    : "Notebook có thể mắc lỗi. Hãy kiểm tra lại thông tin quan trọng.";
 }
 
 async function handleQuestionSubmit(event) {
@@ -877,15 +885,48 @@ function resizeQuestionInput() {
   elements.questionInput.style.height = `${Math.min(elements.questionInput.scrollHeight, 180)}px`;
 }
 
+const mobileSidebarQuery = window.matchMedia("(max-width: 860px)");
+
+function syncSidebarAccessibility() {
+  const isVisible = mobileSidebarQuery.matches
+    ? elements.sidebar.classList.contains("is-open")
+    : !elements.appShell.classList.contains("sidebar-collapsed");
+  elements.sidebar.inert = !isVisible;
+  elements.chatLayout.inert = mobileSidebarQuery.matches && isVisible;
+  elements.openSidebar.setAttribute("aria-expanded", String(isVisible));
+}
+
 function openSidebar() {
+  elements.appShell.classList.remove("sidebar-collapsed");
   elements.sidebar.classList.add("is-open");
-  elements.sidebarScrim.classList.add("is-visible");
+  elements.sidebarScrim.classList.toggle("is-visible", mobileSidebarQuery.matches);
+  syncSidebarAccessibility();
   elements.closeSidebar.focus();
 }
 
 function closeSidebar() {
+  const hadFocus = elements.sidebar.contains(document.activeElement);
   elements.sidebar.classList.remove("is-open");
   elements.sidebarScrim.classList.remove("is-visible");
+  syncSidebarAccessibility();
+  if (hadFocus && mobileSidebarQuery.matches) elements.openSidebar.focus();
+}
+
+function collapseSidebar() {
+  if (mobileSidebarQuery.matches) {
+    closeSidebar();
+    return;
+  }
+  elements.appShell.classList.add("sidebar-collapsed");
+  syncSidebarAccessibility();
+  elements.openSidebar.focus();
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const label = theme === "dark" ? "Bật giao diện sáng" : "Bật giao diện tối";
+  elements.themeToggle.setAttribute("aria-label", label);
+  elements.themeToggle.title = label;
 }
 
 elements.authTabs.forEach((tab) => {
@@ -925,7 +966,7 @@ elements.suggestions.forEach((button) => {
   });
 });
 elements.openSidebar.addEventListener("click", openSidebar);
-elements.closeSidebar.addEventListener("click", closeSidebar);
+elements.closeSidebar.addEventListener("click", collapseSidebar);
 elements.sidebarScrim.addEventListener("click", closeSidebar);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
@@ -933,5 +974,17 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+elements.attachFileButton.addEventListener("click", () => elements.fileInput.click());
+elements.themeToggle.addEventListener("click", () => {
+  const theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  applyTheme(theme);
+  writeStorage(storageKeys.theme, theme);
+});
+mobileSidebarQuery.addEventListener("change", () => {
+  closeSidebar();
+  syncSidebarAccessibility();
+});
+applyTheme(readStorage(storageKeys.theme, "light"));
+syncSidebarAccessibility();
 setAuthMode("login");
 showApplication();

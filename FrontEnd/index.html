@@ -8,13 +8,24 @@
       content="Notebook giúp tải tài liệu và hỏi đáp trực tiếp từ nội dung của bạn."
     />
     <title>Notebook | Hỏi đáp tài liệu</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260922-1" />
-    <script src="/static/app.js?v=20260922-1" defer></script>
+    <link rel="stylesheet" href="/static/styles.css?v=20261007-1" />
+    <script src="/static/app.js?v=20261007-1" defer></script>
   </head>
   <body>
+    <a class="skip-link" href="#question-input">Chuyển đến ô nhập câu hỏi</a>
+    <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <symbol id="icon-panel" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></symbol>
+      <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M13 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-7M16 3l5 5-10 10-5 1 1-5Z"/></symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="m6 11 6-6 6 6M12 5v14"/></symbol>
+      <symbol id="icon-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="icon-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Zm0 0v6h6M8 13h8M8 17h5"/></symbol>
+      <symbol id="icon-light" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M8 13a6 6 0 1 1 8 0c-1 1-1 2-1 2H9s0-1-1-2Z"/></symbol>
+      <symbol id="icon-study" viewBox="0 0 24 24"><path d="m3 8 9-5 9 5-9 5Zm3 2v7c4 3 8 3 12 0v-7M21 8v8"/></symbol>
+    </svg>
     <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
       <div class="auth-intro">
-        <a class="brand brand-on-blue" href="/" aria-label="Notebook, trang chủ">
+        <a class="brand" href="/" aria-label="Notebook, trang chủ">
           <span class="brand-mark" aria-hidden="true">N</span>
           <span>Notebook</span>
         </a>
@@ -104,23 +115,21 @@
 
       <aside class="sidebar" id="sidebar" aria-label="Điều hướng chính">
         <div class="sidebar-header">
-          <a class="brand brand-on-blue" href="/" aria-label="Notebook, trang chủ">
+          <a class="brand" href="/" aria-label="Notebook, trang chủ">
             <span class="brand-mark" aria-hidden="true">N</span>
             <span>Notebook</span>
           </a>
-          <button class="text-button mobile-only" id="close-sidebar" type="button">
-            Đóng
-          </button>
+          <button class="icon-button" id="close-sidebar" type="button" aria-label="Thu gọn thanh bên" title="Thu gọn thanh bên"><svg class="icon" aria-hidden="true"><use href="#icon-panel"></use></svg></button>
         </div>
 
         <button class="new-chat-button" id="new-chat-button" type="button">
-          <span aria-hidden="true">+</span>
+          <svg class="icon" aria-hidden="true"><use href="#icon-edit"></use></svg>
           Cuộc trò chuyện mới
         </button>
 
         <section class="chat-history-section" aria-labelledby="chat-history-heading">
           <div class="sidebar-section-header">
-            <h2 id="chat-history-heading">Lịch sử chat</h2>
+            <h2 id="chat-history-heading">Cuộc trò chuyện</h2>
             <span id="chat-count">0</span>
           </div>
           <ul class="chat-history-list" id="chat-history-list">
@@ -135,8 +144,7 @@
           </div>
 
           <label class="upload-button" for="file-input">
-            <span>Tải tài liệu lên</span>
-            <span class="upload-types">PDF, DOCX, TXT</span>
+            <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg><span>Tải tài liệu lên<small class="upload-types">PDF, DOCX, TXT</small></span>
           </label>
           <input
             class="visually-hidden"
@@ -144,8 +152,6 @@
             type="file"
             accept=".pdf,.docx,.txt"
           />
-
-          <div class="upload-status is-hidden" id="upload-status" aria-live="polite"></div>
 
           <ul class="document-list" id="document-list">
             <li class="document-empty" id="document-empty">
@@ -166,50 +172,31 @@
         </div>
       </aside>
 
-      <main class="chat-layout">
+      <main class="chat-layout" id="main-content">
         <header class="chat-header">
-          <button class="menu-button mobile-only" id="open-sidebar" type="button">
-            Menu
-          </button>
+          <button class="icon-button" id="open-sidebar" type="button" aria-label="Mở thanh bên" aria-controls="sidebar" aria-expanded="true" title="Mở thanh bên"><svg class="icon" aria-hidden="true"><use href="#icon-panel"></use></svg></button>
           <div>
-            <p class="chat-title">Hỏi đáp tài liệu</p>
+            <p class="chat-title">Notebook <span class="title-badge">Hỏi đáp tài liệu</span></p>
             <p class="chat-subtitle" id="chat-context">Sẵn sàng nhận câu hỏi</p>
           </div>
-          <a class="docs-link" href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+          <div class="header-actions"><button class="icon-button" id="theme-toggle" type="button" aria-label="Bật giao diện tối" title="Bật giao diện tối"><svg class="icon" aria-hidden="true"><use href="#icon-theme"></use></svg></button></div>
         </header>
 
         <div class="chat-scroll" id="chat-scroll">
           <section class="empty-state" id="empty-state" aria-labelledby="empty-title">
-            <span class="empty-mark" aria-hidden="true">N</span>
             <h1 id="empty-title">Bạn muốn tìm hiểu điều gì?</h1>
             <p>
-              Tải tài liệu lên, sau đó hỏi về nội dung, khái niệm hoặc phần cần tóm tắt.
+              Một nơi để đọc, hiểu và khám phá tài liệu của bạn.
             </p>
 
-            <div class="prompt-suggestions" aria-label="Câu hỏi gợi ý">
-              <button type="button" data-prompt="Tóm tắt những ý chính trong tài liệu.">
-                Tóm tắt những ý chính
-              </button>
-              <button type="button" data-prompt="Giải thích khái niệm quan trọng nhất trong tài liệu.">
-                Giải thích khái niệm quan trọng
-              </button>
-              <button type="button" data-prompt="Tạo danh sách câu hỏi ôn tập từ tài liệu.">
-                Tạo câu hỏi ôn tập
-              </button>
-            </div>
+
           </section>
 
           <div class="message-list" id="message-list" aria-live="polite"></div>
         </div>
 
         <div class="composer-area">
-          <div class="answer-mode-control">
-            <label for="answer-mode">Chế độ trả lời</label>
-            <select id="answer-mode" name="answer_mode">
-              <option value="retrieval">Tài liệu</option>
-              <option id="agent-mode-option" value="agent">Agent tools · Pro</option>
-            </select>
-          </div>
+          <div class="upload-status is-hidden" id="upload-status" aria-live="polite"></div>
           <form class="composer" id="chat-form">
             <label class="visually-hidden" for="question-input">Nhập câu hỏi</label>
             <textarea
@@ -220,10 +207,31 @@
               placeholder="Hỏi về tài liệu của bạn"
               required
             ></textarea>
-            <button class="send-button" id="send-button" type="submit">Gửi</button>
+            <div class="composer-toolbar">
+              <button class="icon-button" id="attach-file-button" type="button" aria-label="Đính kèm tài liệu" title="Tải PDF, DOCX hoặc TXT"><svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg></button>
+              <div class="answer-mode-control">
+                <label class="visually-hidden" for="answer-mode">Chế độ trả lời</label>
+                <select id="answer-mode" name="answer_mode">
+                  <option value="retrieval">Tài liệu</option>
+                  <option id="agent-mode-option" value="agent">Agent tools · Pro</option>
+                </select>
+              </div>
+              <button class="send-button" id="send-button" type="submit" aria-label="Gửi câu hỏi" title="Gửi câu hỏi"><svg class="icon" aria-hidden="true"><use href="#icon-arrow"></use></svg></button>
+            </div>
           </form>
+            <div class="prompt-suggestions" aria-label="Câu hỏi gợi ý">
+              <button type="button" data-prompt="Tóm tắt những ý chính trong tài liệu.">
+                <svg class="icon" aria-hidden="true"><use href="#icon-file"></use></svg> Tóm tắt tài liệu
+              </button>
+              <button type="button" data-prompt="Giải thích khái niệm quan trọng nhất trong tài liệu.">
+                <svg class="icon" aria-hidden="true"><use href="#icon-light"></use></svg> Giải thích khái niệm
+              </button>
+              <button type="button" data-prompt="Tạo danh sách câu hỏi ôn tập từ tài liệu.">
+                <svg class="icon" aria-hidden="true"><use href="#icon-study"></use></svg> Câu hỏi ôn tập
+              </button>
+            </div>
           <p class="composer-note" id="composer-note">
-            Câu trả lời được tạo từ dữ liệu retrieval. Hãy kiểm tra lại thông tin quan trọng.
+            Notebook có thể mắc lỗi. Hãy kiểm tra lại thông tin quan trọng.
           </p>
         </div>
       </main>
