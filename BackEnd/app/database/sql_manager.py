@@ -149,7 +149,7 @@ class Supabase_Manager():
     def select_chat_histories_by_user(self, user_id: str):
         response = (
             self.supabase.table("chat_history")
-            .select("chat_id, created_at, conversation")
+            .select("chat_id, created_at, title:conversation->0->>user")
             .eq("user_id", user_id)
             .order("created_at", desc=True)
             .execute()
