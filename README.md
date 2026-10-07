@@ -88,6 +88,15 @@ conversation in Supabase to support follow-up questions.
 Swagger UI is available at `http://localhost:8000/docs` while the application is
 running.
 
+## Document source citations
+
+Answers can include clickable document references with filename, PDF page, and
+the extracted snippet. Source snapshots persist with each conversation turn.
+Apply the additive chunk metadata migration before uploading new files, and log
+in again to obtain the signed document-access session. See
+[`BackEnd/SOURCE_CITATIONS.md`](BackEnd/SOURCE_CITATIONS.md) for setup, the SSE
+contract, legacy metadata handling, and access-controlled retrieval diagnostics.
+
 ## Configuration
 
 Create `BackEnd/.env` from the example and provide the required credentials:
@@ -233,11 +242,10 @@ own unit test suite completed all six tests successfully.
 ## Current status and limitations
 
 - The Query Router has a trained model but is not part of the current API flow.
-- The Qdrant API path returns concatenated context rather than chunk IDs and
-  scores, so retrieval traces are not currently exposed.
-- The benchmark found that the TXT and DOCX extractors return the `text` key while
-  the pipeline expects `texts`. These upload paths must be fixed before production
-  use.
+- Structured retrieval results and protected SSE trace events expose native
+  Qdrant IDs/scores. The live benchmark has not yet been adapted to consume them.
+- PDF, DOCX, and TXT extractors now share the `texts` chunk-list contract.
+  Original uploaded files are not retained; citations open stored snippets.
 - `TextInputProcessor` currently creates a `Document` without the required
   `chat_id`; the corresponding test fails.
 - The router model was saved with scikit-learn 1.8.0, while the current environment
