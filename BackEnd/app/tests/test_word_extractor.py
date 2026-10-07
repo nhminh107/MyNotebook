@@ -116,7 +116,7 @@ def test_extract_word_document(tmp_path: Path) -> None:
     assert output == [
         {
             "page": None,
-            "text": "\n".join(SAMPLE_PARAGRAPHS),
+            "texts": ["\n".join(SAMPLE_PARAGRAPHS)],
         }
     ]
 

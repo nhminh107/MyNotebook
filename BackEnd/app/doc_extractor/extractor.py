@@ -171,7 +171,7 @@ class WordExtractor(BaseExtractor):
         chunked_texts = chunking(text)
         return [{
             "page": None,
-            "text": chunked_texts
+            "texts": chunked_texts
         }]
 
 
@@ -247,7 +247,7 @@ class TextExtractor(BaseExtractor):
         chunked_texts = chunking(text)
         return [{
             "page": None,
-            "text": chunked_texts
+            "texts": chunked_texts
         }]
 
 class ExtractorFactory:

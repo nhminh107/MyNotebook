@@ -49,6 +49,9 @@ class Supabase_Manager():
                 "chunk_id": chunk.chunk_id,
                 "document_id": chunk.document_id,
                 "content": sanitize_text(chunk.content),
+                "page": chunk.page,
+                "chunk_index": chunk.chunk_index,
+                "ocr_used": chunk.ocr_used,
             }
             for chunk in chunks
         ]
@@ -75,7 +78,7 @@ class Supabase_Manager():
         )
         return response.data
 
-    def update_chat_history(self, user_id: str, chat_id: str, user_message: str, chatbot_message: str, chat_summary: str):
+    def update_chat_history(self, user_id: str, chat_id: str, user_message: str, chatbot_message: str, chat_summary: str, source_metadata: dict | None = None):
         response = (
             self.supabase.table("chat_history")
             .select("conversation")
@@ -86,10 +89,13 @@ class Supabase_Manager():
         )
 
         conversation = response.data["conversation"] or []
-        conversation.append({
+        turn = {
             "user": sanitize_text(user_message),
-            "chatbot": sanitize_text(chatbot_message)
-        })
+            "chatbot": sanitize_text(chatbot_message),
+        }
+        if source_metadata is not None:
+            turn.update(source_metadata)
+        conversation.append(turn)
 
         data = {
             "conversation": conversation,
