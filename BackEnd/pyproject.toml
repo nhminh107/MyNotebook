@@ -3,6 +3,7 @@ name="MyNotebook"
 version="0.1"
 
 dependencies = [
+    "boto3>=1.36.0",
     "faiss-cpu",
     "langchain",
     "langchain-core",

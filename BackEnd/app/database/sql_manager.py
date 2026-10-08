@@ -22,6 +22,7 @@ class Supabase_Manager():
             os.environ.get("SUPABASE_PUBLISHABLE_KEY")
         )
         self._missing_chunk_metadata: set[str] = set()
+        self._document_storage_schema_ready = False
 
     def insert_user(self, user: User): 
         data = {
@@ -44,10 +45,24 @@ class Supabase_Manager():
             "chat_id": doc.chat_id,
             "file_name": doc.file_name
         }
+        if doc.storage_key:
+            data.update(doc.model_dump(include={
+                "storage_bucket", "storage_key", "content_type", "file_size",
+                "sha256", "etag",
+            }))
         response = (
             self.supabase.table("document").insert(data).execute()
         )
         return response.data
+
+    def validate_document_storage_schema(self) -> None:
+        """Reject missing R2 metadata columns before uploading an original file."""
+        if getattr(self, "_document_storage_schema_ready", False):
+            return
+        self.supabase.table("document").select(
+            "storage_bucket,storage_key,content_type,file_size,sha256,etag"
+        ).limit(0).execute()
+        self._document_storage_schema_ready = True
 
     def insert_chunks(self, chunks: list[Chunk]):
         if not chunks:
@@ -192,6 +207,14 @@ class Supabase_Manager():
     def select_document(self, document_id:str):
         response=(self.supabase.table("document").select("*").eq("document_id", document_id).execute())
         return response.data
+
+    def select_document_for_user(self, document_id: str, user_id: str) -> dict | None:
+        """Filter original-file access by the authenticated owner's identity."""
+        response = (
+            self.supabase.table("document").select("*")
+            .eq("document_id", document_id).eq("user_id", user_id).execute()
+        )
+        return response.data[0] if response.data else None
 
     def select_document_by_user(self, user_id:str):
         response= (self.supabase.table("document").select("*").eq("user_id", user_id).execute())

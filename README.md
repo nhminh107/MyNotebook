@@ -10,6 +10,7 @@ and streams generated answers to the web interface.
 ```mermaid
 flowchart LR
     U["PDF / DOCX / TXT"] --> E["Extract & sanitize"]
+    U --> R2["Cloudflare R2<br/>private originals"]
     E --> C["Chunk 400 tokens<br/>overlap 60"]
     C --> V["Cloudflare BGE-M3<br/>dense vector 1024D"]
     C --> S["Supabase<br/>metadata, chunks, history"]
@@ -81,6 +82,7 @@ conversation in Supabase to support follow-up questions.
 |---|---|---|
 | `GET` | `/health` | Checks API availability |
 | `POST` | `/documents/upload` | Uploads and indexes a PDF, DOCX, or TXT file |
+| `GET` | `/documents/files/{document_id}` | Opens the authenticated owner's original document from R2 |
 | `POST` | `/documents/retrieval/stream` | Runs RAG question answering and returns SSE |
 | `POST` | `/documents/retrieval/agent-stream` | Runs Agent-based question answering for a Pro account |
 | `GET` | `/documents/chats/{user_id}` | Lists a user's conversations |
@@ -113,11 +115,21 @@ LLM_API_KEY=YOUR_LLM_API_KEY
 OCR_API_KEY=YOUR_OCR_API_KEY
 CF_API_KEY=YOUR_CLOUDFLARE_API_TOKEN
 CF_ACC_ID=YOUR_CLOUDFLARE_ACCOUNT_ID
+S3_API_KEY=YOUR_CLOUDFLARE_R2_API_TOKEN
+S3_API_URL=https://YOUR_CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com
 ```
 
 `OCR_API_KEY` is only required for OCR. Supabase must provide tables compatible
 with the current models: `user`, `document`, `chunks`, and `chat_history`. Never
 commit the `.env` file.
+
+`S3_API_KEY` must be a Cloudflare R2 API Token with Object Read & Write access to
+the existing private `mynotebook` bucket. Uploads archive originals there and
+citations link to an authenticated backend file route. Apply
+[`002_document_storage.sql`](BackEnd/migrations/002_document_storage.sql) before
+R2 uploads; see the [migration instructions](BackEnd/migrations/README.md).
+The backend uses boto3 with the R2 S3 endpoint specified by `S3_API_URL` (or the
+default derived from `CF_ACC_ID`) and credentials derived from the API token.
 
 Qdrant is expected at `http://localhost:6333` by default. The `user_documents`
 collection is created automatically with 1024-dimensional dense vectors when the

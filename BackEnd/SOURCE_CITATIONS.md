@@ -29,7 +29,8 @@ With sources enabled, the standard retrieval stream sends:
 1. `sources`: a `turn_id` and source snapshots used in the model context.
 2. `retrieval_trace`: optional, separately authorized diagnostics.
 3. `token`: answer text, including `[[source:N]]` markers.
-4. `citations`: valid/invalid IDs and `saved: true`, after summary/history storage.
+4. `citations`: valid/invalid IDs, structured cited-source snapshots,
+   `source_schema_version: 2`, and `saved: true`, after summary/history storage.
 5. `done`: `saved: true`.
 
 A failed retrieval, generation, summarization or history write sends `error` and
@@ -44,8 +45,49 @@ snapshots instead of running retrieval again. Snapshots contain the exact excerp
 supplied to the model, including any context-budget truncation.
 
 DOCX/TXT and legacy points can have unknown pages. The source viewer displays this
-explicitly. It opens extracted snippets; original file/PDF viewing is not available
-because uploaded temporary files are removed after ingestion.
+explicitly. New uploads preserve original PDF/DOCX/TXT bytes in the private
+Cloudflare R2 `mynotebook` bucket before chunk indexing. Apply
+[`002_document_storage.sql`](migrations/002_document_storage.sql) to store the R2
+bucket/key, content type, file size, SHA-256 checksum and ETag in SQL. Configure
+`CF_ACC_ID` and a Cloudflare R2 Object Read & Write API Token as `S3_API_KEY`.
+`S3_API_URL` selects the R2 S3 endpoint; boto3 signs upload/read requests using
+credentials derived from the verified API token. Object-scoped tokens are used
+through the S3 API rather than the Cloudflare REST object endpoints.
+
+New source snapshots include a `document_url`, for example
+`/documents/files/<document_id>#page=3`. The viewer offers "Mở tài liệu gốc";
+PDF links include the cited page and DOCX files download. File access requires
+the same signed session as retrieval and verifies SQL ownership. The application
+never publishes the bucket or exposes its token. Temporary local upload files
+are still removed after ingestion. Legacy snippets without originals remain
+viewable and have a null `document_url`.
+
+The final citations event contains only valid, cited sources. For example:
+
+```json
+{
+  "turn_id": "TURN_ID",
+  "source_schema_version": 2,
+  "cited_source_ids": [1],
+  "invalid_source_ids": [],
+  "citations": [{
+    "citation_id": 1,
+    "chunk_id": "CHUNK_ID",
+    "qdrant_point_id": "CHUNK_ID",
+    "document_id": "DOCUMENT_ID",
+    "file_name": "notes.pdf",
+    "page": 3,
+    "chunk_index": 2,
+    "ocr_used": false,
+    "content": "The exact excerpt supplied to the model.",
+    "document_url": "/documents/files/DOCUMENT_ID#page=3"
+  }],
+  "saved": true
+}
+```
+
+The upload response now also includes `document_id` and `document_url`. Empty
+files are rejected, and the application limits each original to 300 MB.
 
 ## Agent mode
 

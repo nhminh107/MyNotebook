@@ -6,9 +6,12 @@ import os
 import secrets
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
+from starlette.background import BackgroundTask
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from BackEnd.app.chatbot.chatbot import Chatbot
@@ -20,6 +23,10 @@ from BackEnd.app.chatbot.tools import ToolList
 from BackEnd.app.chatbot.agents import Agents
 
 from BackEnd.app.service.session_service import require_document_identity
+from BackEnd.app.service.r2_storage import (
+    CloudflareR2, DOCUMENT_CONTENT_TYPES, MAX_DOCUMENT_BYTES, READ_SIZE, StorageError,
+    iter_document_bytes,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +97,11 @@ def get_database() -> Supabase_Manager:
 
 
 @lru_cache(maxsize=1)
+def get_storage() -> CloudflareR2:
+    return CloudflareR2()
+
+
+@lru_cache(maxsize=1)
 def get_pipeline() -> Pipeline:
     qdrant = QDrant()
     embedding_model = EmbeddingModel()
@@ -105,6 +117,7 @@ def get_pipeline() -> Pipeline:
         embedding_model=embedding_model,
         chatbot=chatbot,
         agent=Agents(agent_tools),
+        storage=get_storage(),
     )
 
 
@@ -113,6 +126,51 @@ router = APIRouter(
     tags=["Documents"],
     dependencies=[Depends(require_document_identity)],
 )
+
+
+@router.get("/files/{document_id}")
+def get_document_file(document_id: str, request: Request) -> StreamingResponse:
+    """Stream an original file only to its authenticated document owner."""
+    try:
+        row = get_database().select_document_for_user(
+            document_id, request.state.user_id,
+        )
+        if not row or not row.get("storage_key"):
+            raise HTTPException(status_code=404, detail="Original document not found.")
+        storage = get_storage()
+        if row.get("storage_bucket") != storage.bucket:
+            raise HTTPException(status_code=404, detail="Original document not found.")
+        content_type = DOCUMENT_CONTENT_TYPES.get(row.get("type"))
+        if content_type is None:
+            raise HTTPException(status_code=415, detail="Unsupported document type.")
+        body = storage.open_document(row["storage_key"])
+        filename = Path(row.get("file_name") or "document").name
+        disposition = "attachment" if row["type"] == ".docx" else "inline"
+        return StreamingResponse(
+            iter_document_bytes(body), media_type=content_type,
+            headers={
+                "Content-Disposition": (
+                    f"{disposition}; filename*=UTF-8''{quote(filename, safe='')}"
+                ),
+                "Cache-Control": "private, no-store",
+                "X-Content-Type-Options": "nosniff",
+            },
+            background=BackgroundTask(body.close),
+        )
+    except HTTPException:
+        raise
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Original document not found.") from exc
+    except StorageError as exc:
+        logger.exception("Original document storage is unavailable.")
+        raise HTTPException(
+            status_code=502, detail="Original document storage is unavailable.",
+        ) from exc
+    except Exception as exc:
+        logger.exception("Unable to load the original document.")
+        raise HTTPException(
+            status_code=500, detail="Unable to load the original document.",
+        ) from exc
 
 
 @router.get("/chats/{user_id}")
@@ -172,8 +230,6 @@ async def upload_document(
     chat_id: str = Form(...),
     file: UploadFile = File(...),
 ):
-    pipeline = get_pipeline()
-
     if not file.filename:
         raise HTTPException(
             status_code=400,
@@ -195,12 +251,22 @@ async def upload_document(
             delete=False,
             suffix=extension,
         ) as temp_file:
-
-            content = await file.read()
-            temp_file.write(content)
             temp_path = temp_file.name
 
-        pipeline.insert_doc_pipeline(
+            size = 0
+            while content := await file.read(READ_SIZE):
+                size += len(content)
+                if size > MAX_DOCUMENT_BYTES:
+                    raise HTTPException(
+                        status_code=413, detail="Document exceeds the 300 MB upload limit.",
+                    )
+                temp_file.write(content)
+            if size == 0:
+                raise HTTPException(status_code=400, detail="Document must not be empty.")
+
+        pipeline = await run_in_threadpool(get_pipeline)
+        doc = await run_in_threadpool(
+            pipeline.insert_doc_pipeline,
             doc_path=temp_path,
             user_id=user_id,
             chat_id=chat_id,
@@ -212,13 +278,22 @@ async def upload_document(
             "filename": file.filename,
             "user_id": user_id,
             "chat_id": chat_id,
+            "document_id": doc.document_id if doc is not None else None,
+            "document_url": doc.document_url if doc is not None else None,
         }
 
+    except HTTPException:
+        raise
+    except StorageError as exc:
+        logger.exception("Original document upload to R2 failed.")
+        raise HTTPException(
+            status_code=502, detail="Unable to store the original document in Cloudflare R2.",
+        ) from exc
     except Exception as exc:
         logger.exception("Document upload failed.")
         raise HTTPException(
             status_code=500,
-            detail="Unable to upload the document. Check backend configuration and the source metadata migration.",
+            detail="Unable to upload the document. Check backend configuration and the source metadata/document storage migrations.",
         ) from exc
 
     finally:

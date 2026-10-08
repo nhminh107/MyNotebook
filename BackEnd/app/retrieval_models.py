@@ -26,6 +26,7 @@ class RetrievalHit(BaseModel):
     qdrant_point_id: str
     document_id: str
     file_name: str = ""
+    document_url: str | None = None
     page: int | None = Field(default=None, ge=1)
     chunk_index: int | None = Field(default=None, ge=0)
     content: str
@@ -46,6 +47,7 @@ class SourceReference(BaseModel):
     qdrant_point_id: str
     document_id: str
     file_name: str = ""
+    document_url: str | None = None
     page: int | None = Field(default=None, ge=1)
     chunk_index: int | None = Field(default=None, ge=0)
     ocr_used: bool | None = None
@@ -85,10 +87,12 @@ class SourceRegistry:
                     citation_id=len(self.sources) + 1,
                     **hit.model_dump(include={
                         "chunk_id", "qdrant_point_id", "document_id", "file_name",
-                        "page", "chunk_index", "ocr_used",
+                        "page", "chunk_index", "ocr_used", "document_url",
                     }),
                     content=content,
                 )
+                if source.document_url and source.page is not None:
+                    source.document_url += f"#page={source.page}"
                 self.sources.append(source)
                 by_key[key] = source
                 selected.append(source)

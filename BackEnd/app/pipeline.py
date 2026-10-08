@@ -21,16 +21,24 @@ from BackEnd.app.doc_extractor.extractor import (
     WordExtractor,
 )
 from BackEnd.app.text_input.Embedding import EmbeddingModel
+from BackEnd.app.service.r2_storage import CloudflareR2
 
 class Pipeline:
-    def __init__(self, sql: Supabase_Manager, qdrant: QDrant, embedding_model: EmbeddingModel, chatbot: Chatbot = None, agent: Agents = None):
+    def __init__(
+        self, sql: Supabase_Manager, qdrant: QDrant,
+        embedding_model: EmbeddingModel, chatbot: Chatbot | None = None,
+        agent: Agents | None = None, storage: CloudflareR2 | None = None,
+    ) -> None:
         self.sql = sql
         self.qdrant = qdrant
         self.embedding_model = embedding_model
         self.chatbot = chatbot
         self.agent = agent
+        self.storage = storage
 
-    def insert_doc_pipeline(self, doc_path: str, user_id: str, chat_id: str, file_name: str):
+    def insert_doc_pipeline(
+        self, doc_path: str, user_id: str, chat_id: str, file_name: str,
+    ) -> Document:
 
         if not self.sql.select_chat_history(user_id=user_id, chat_id=chat_id):
             self.sql.init_chat_history(chat_id=chat_id, user_id=user_id)
@@ -46,6 +54,10 @@ class Pipeline:
             chat_id=chat_id,
             file_name=file_name
         )
+        if self.storage is not None:
+            self.sql.validate_document_storage_schema()
+            metadata = self.storage.upload_document(Path(doc_path), doc.document_id)
+            doc = doc.model_copy(update=metadata)
         self.sql.insert_document(doc=doc)
 
         document_chunks = base_model.extract(doc_path)
@@ -96,6 +108,8 @@ class Pipeline:
                 chat_id=chat_id,
                 chunks=chunks,
             )
+
+        return doc
 
     def query_stream(self, user_id: str, user_query: str, chat_id: str) -> Iterator[str]:
         chat_history = self.sql.select_chat_history(
@@ -219,11 +233,16 @@ class Pipeline:
             chatbot_message=answer, chat_summary=new_summary,
             source_metadata={
                 "turn_id": turn_id, "sources": sources,
-                **citations, "source_schema_version": 1,
+                **citations, "source_schema_version": 2,
             },
         )
         return PipelineEvent(event="citations", payload={
             "turn_id": turn_id, **citations, "saved": True,
+            "source_schema_version": 2,
+            "citations": [
+                source for source in sources
+                if source["citation_id"] in citations["cited_source_ids"]
+            ],
         })
 
     def query_events(self, user_id: str, user_query: str, chat_id: str,
