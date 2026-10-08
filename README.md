@@ -11,7 +11,7 @@ and streams generated answers to the web interface.
 flowchart LR
     U["PDF / DOCX / TXT"] --> E["Extract & sanitize"]
     E --> C["Chunk 400 tokens<br/>overlap 60"]
-    C --> V["VietRAG-Embed<br/>dense vector 768D"]
+    C --> V["Cloudflare BGE-M3<br/>dense vector 1024D"]
     C --> S["Supabase<br/>metadata, chunks, history"]
     V --> Q["Qdrant<br/>dense + BM25"]
 
@@ -30,7 +30,8 @@ flowchart LR
 2. The extracted content is sanitized and split with
    `RecursiveCharacterTextSplitter` using a 400-token chunk size and a 60-token
    overlap.
-3. `VietRAG-Embed` produces normalized 768-dimensional dense embeddings.
+3. Cloudflare Workers AI `@cf/baai/bge-m3` produces normalized 1024-dimensional
+   dense embeddings without E5 query/passage prefixes.
 4. Metadata, chunks, and conversation history are stored in Supabase.
 5. Qdrant stores dense vectors, sparse BM25 vectors, and the `user_id`, `chat_id`,
    and `document_id` payload. The pipeline writes batches of up to 200 chunks.
@@ -110,6 +111,8 @@ SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_KEY
 LLM_API_KEY=YOUR_LLM_API_KEY
 OCR_API_KEY=YOUR_OCR_API_KEY
+CF_API_KEY=YOUR_CLOUDFLARE_API_TOKEN
+CF_ACC_ID=YOUR_CLOUDFLARE_ACCOUNT_ID
 ```
 
 `OCR_API_KEY` is only required for OCR. Supabase must provide tables compatible
@@ -117,7 +120,10 @@ with the current models: `user`, `document`, `chunks`, and `chat_history`. Never
 commit the `.env` file.
 
 Qdrant is expected at `http://localhost:6333` by default. The `user_documents`
-collection is created automatically when the pipeline is initialized.
+collection is created automatically with 1024-dimensional dense vectors when the
+pipeline is initialized. An existing 768-dimensional collection cannot accept
+BGE-M3 vectors; back it up and rebuild it with newly embedded documents before
+using the new model.
 
 ## Running with Docker on Ubuntu
 

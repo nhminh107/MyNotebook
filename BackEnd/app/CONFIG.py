@@ -5,4 +5,4 @@ QDRANT_URL = os.getenv(
     "QDRANT_URL",
     "http://localhost:6333"
 )
-EMBEDDING_SIZE=768
+EMBEDDING_SIZE = 1024
