@@ -21,6 +21,7 @@ const elements = {
   sourceTitle: document.querySelector("#source-title"),
   sourceLocation: document.querySelector("#source-location"),
   sourceSnippet: document.querySelector("#source-snippet"),
+  sourceOriginal: document.querySelector("#source-original"),
   closeSource: document.querySelector("#close-source"),
   themeToggle: document.querySelector("#theme-toggle"),
   attachFileButton: document.querySelector("#attach-file-button"),
@@ -369,6 +370,19 @@ function showSource(source) {
   elements.sourceLocation.textContent = source.page ? "Trang " + source.page : "Chưa có thông tin số trang";
   if (source.ocr_used) elements.sourceLocation.textContent += " · Nhận dạng bằng OCR";
   elements.sourceSnippet.textContent = source.content || "Không có nội dung đoạn trích.";
+  elements.sourceOriginal.hidden = true;
+  elements.sourceOriginal.removeAttribute("href");
+  if (source.document_url && URL.canParse(source.document_url, window.location.origin)) {
+    const url = new URL(source.document_url, window.location.origin);
+    const expectedPath = "/documents/files/" + encodeURIComponent(source.document_id);
+    if (url.origin === window.location.origin && url.pathname === expectedPath) {
+      elements.sourceOriginal.href = url.href;
+      elements.sourceOriginal.hidden = false;
+      elements.sourceOriginal.textContent = source.page
+        ? "Mở tài liệu gốc · trang " + source.page
+        : "Mở tài liệu gốc";
+    }
+  }
   elements.sourceDialog.showModal();
   elements.sourceSnippet.scrollTop = 0;
 }
