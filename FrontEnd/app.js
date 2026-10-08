@@ -305,6 +305,46 @@ function renderMarkdown(markdown) {
   return output.join("");
 }
 
+function getDocumentUrl(documentItem, includePage = false) {
+  const id = documentItem.document_id;
+  if (!id) return null;
+  const storedDocument = state.documents.find((item) => item.document_id === id);
+  // R2 links come from current, owner-filtered SQL metadata, never old snapshots.
+  if (storedDocument?.r2_url && URL.canParse(storedDocument.r2_url)) {
+    const url = new URL(storedDocument.r2_url);
+    const keyPath = (storedDocument.storage_key || "").split("/").map(encodeURIComponent).join("/");
+    const expectedPath = "/" + encodeURIComponent(storedDocument.storage_bucket) + "/" + keyPath;
+    const publicLink = keyPath && !url.search && url.pathname.endsWith("/" + keyPath);
+    const signedLink = url.hostname.endsWith(".r2.cloudflarestorage.com") && url.pathname === expectedPath
+        && url.searchParams.get("X-Amz-Algorithm") === "AWS4-HMAC-SHA256"
+        && url.searchParams.has("X-Amz-Signature");
+    if (url.protocol === "https:" && !url.username && !url.password && (publicLink || signedLink)) {
+      url.hash = includePage && Number.isInteger(documentItem.page) && documentItem.page > 0
+        ? "page=" + documentItem.page : "";
+      return url.href;
+    }
+  }
+  const candidates = [documentItem.document_url, storedDocument?.document_url];
+  for (const candidate of candidates) {
+    if (!candidate || !URL.canParse(candidate, window.location.origin)) continue;
+    const url = new URL(candidate, window.location.origin);
+    const expectedPath = "/documents/files/" + encodeURIComponent(id);
+    if (url.origin !== window.location.origin || url.pathname !== expectedPath || url.search) continue;
+    url.hash = includePage && Number.isInteger(documentItem.page) && documentItem.page > 0
+      ? "page=" + documentItem.page : "";
+    return url.href;
+  }
+  return null;
+}
+
+function configureDocumentLink(link, url, name) {
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.title = name + "\nMở tài liệu trên R2: " + url;
+  link.setAttribute("aria-label", "Mở tài liệu trên R2: " + name);
+}
+
 function renderMarkdownInto(element, markdown, sources = []) {
   element.innerHTML = renderMarkdown(markdown);
   const sourceMap = new Map(sources.map((source) => [source.citation_id, source]));
@@ -322,11 +362,13 @@ function renderMarkdownInto(element, markdown, sources = []) {
       fragment.append(node.textContent.slice(position, match.index));
       const id = Number(match[1]);
       const source = sourceMap.get(id);
-      const marker = document.createElement(source ? "button" : "span");
+      const url = source && getDocumentUrl(source, true);
+      const marker = document.createElement(source ? (url ? "a" : "button") : "span");
       marker.className = source ? "citation-button" : "citation-invalid";
       marker.textContent = source ? "[" + id + "]" : "[nguồn không xác định]";
       if (source) {
-        marker.type = "button";
+        if (url) configureDocumentLink(marker, url, source.file_name || "Tài liệu");
+        else marker.type = "button";
         marker.dataset.citationId = String(id);
         marker.setAttribute("aria-label", "Xem nguồn " + id + ": " + (source.file_name || "Tài liệu"));
       }
@@ -352,17 +394,24 @@ function renderMessageSources(message) {
   label.className = "sources-label";
   label.textContent = "Nguồn";
   section.append(label);
+  const documents = new Map();
   cited.forEach((source) => {
-    const button = document.createElement("button");
-    button.className = "source-card citation-button";
-    button.type = "button";
-    button.dataset.citationId = String(source.citation_id);
+    // Distinct files may share a filename, so only group by document identity.
+    const key = source.document_id || "source:" + source.citation_id;
+    const existing = documents.get(key);
+    if (!existing || (!getDocumentUrl(existing) && getDocumentUrl(source))) documents.set(key, source);
+  });
+  documents.forEach((source) => {
+    const url = getDocumentUrl(source);
+    const card = document.createElement(url ? "a" : "div");
+    card.className = "source-card";
+    const name = source.file_name || "Tài liệu không có tên";
+    if (url) configureDocumentLink(card, url, name);
+    else card.title = name + " · Chưa có bản gốc trên R2";
     const title = document.createElement("span");
-    title.textContent = "[" + source.citation_id + "] " + (source.file_name || "Tài liệu không có tên");
-    const location = document.createElement("small");
-    location.textContent = source.page ? "Trang " + source.page : "Đoạn trích · chưa có số trang";
-    button.append(title, location);
-    section.append(button);
+    title.textContent = name;
+    card.append(title);
+    section.append(card);
   });
   message.querySelector(".message-content").append(section);
 }
@@ -374,16 +423,13 @@ function showSource(source) {
   elements.sourceSnippet.textContent = source.content || "Không có nội dung đoạn trích.";
   elements.sourceOriginal.hidden = true;
   elements.sourceOriginal.removeAttribute("href");
-  if (source.document_url && URL.canParse(source.document_url, window.location.origin)) {
-    const url = new URL(source.document_url, window.location.origin);
-    const expectedPath = "/documents/files/" + encodeURIComponent(source.document_id);
-    if (url.origin === window.location.origin && url.pathname === expectedPath) {
-      elements.sourceOriginal.href = url.href;
-      elements.sourceOriginal.hidden = false;
-      elements.sourceOriginal.textContent = source.page
-        ? "Mở tài liệu gốc · trang " + source.page
-        : "Mở tài liệu gốc";
-    }
+  const url = getDocumentUrl(source, true);
+  if (url) {
+    elements.sourceOriginal.href = url;
+    elements.sourceOriginal.hidden = false;
+    elements.sourceOriginal.textContent = source.page
+      ? "Mở tài liệu gốc · trang " + source.page
+      : "Mở tài liệu gốc";
   }
   elements.sourceDialog.showModal();
   elements.sourceSnippet.scrollTop = 0;
@@ -702,6 +748,10 @@ async function selectChat(chatId) {
     document_id: documentItem.document_id,
     name: documentItem.file_name || `Tài liệu ${documentItem.document_id.slice(0, 8)}`,
     type: documentItem.type,
+    document_url: documentItem.document_url,
+    r2_url: documentItem.r2_url,
+    storage_bucket: documentItem.storage_bucket,
+    storage_key: documentItem.storage_key,
   }));
   state.messages = [];
 
@@ -745,18 +795,22 @@ function renderDocuments() {
 
   state.documents.forEach((documentItem) => {
     const item = document.createElement("li");
-    item.className = "document-item";
+    const url = getDocumentUrl(documentItem);
+    const row = document.createElement(url ? "a" : "div");
+    row.className = "document-item";
+    if (url) configureDocumentLink(row, url, documentItem.name);
+    else row.title = documentItem.name + " · Chưa có bản gốc trên R2";
 
     const name = document.createElement("span");
     name.className = "document-name";
     name.textContent = documentItem.name;
-    name.title = documentItem.name;
 
     const type = document.createElement("span");
     type.className = "document-type";
     type.textContent = documentItem.type;
 
-    item.append(name, type);
+    row.append(name, type);
+    item.append(row);
     elements.documentList.append(item);
   });
 }
@@ -972,6 +1026,8 @@ async function handleQuestionSubmit(event) {
           citationData.sources = Array.isArray(payload.sources) ? payload.sources : [];
           citationData.turn_id = payload.turn_id;
         } else {
+          const finalSources = new Map((payload.citations || []).map((source) => [source.citation_id, source]));
+          citationData.sources = citationData.sources.map((source) => finalSources.get(source.citation_id) || source);
           citationData.cited_source_ids = payload.cited_source_ids || [];
           citationData.saved = payload.saved === true;
         }
@@ -1150,7 +1206,7 @@ showApplication();
 let sourceReturnFocus = null;
 elements.messageList.addEventListener("click", (event) => {
   const button = event.target.closest(".citation-button");
-  if (!button) return;
+  if (!button || button.tagName === "A") return;
   const message = button.closest(".message");
   const source = message?.citationData?.sources?.find((item) => item.citation_id === Number(button.dataset.citationId));
   if (source) {

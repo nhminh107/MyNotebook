@@ -2,7 +2,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 from pydantic import ValidationError
 
 from BackEnd.app.api import document as document_api
@@ -110,8 +110,40 @@ def test_get_chat_history_returns_only_chat_documents(monkeypatch) -> None:
             "chat_id": "chat-001",
             "type": ".pdf",
             "file_name": "notes.pdf",
+            "document_url": None,
+            "r2_url": None,
         }
     ]
+
+
+@pytest.mark.parametrize("bucket,key,expected", [
+    ("mynotebook", "documents/doc-001.pdf", "/documents/files/doc-001"),
+    ("mynotebook", None, None),
+    (None, "documents/doc-001.pdf", None),
+])
+def test_chat_documents_include_original_file_links(monkeypatch, bucket, key, expected):
+    class StubDatabase:
+        def select_chat_history(self, user_id: str, chat_id: str):
+            return {"chat_id": chat_id, "conversation": []}
+
+        def select_document_by_chat(self, user_id: str, chat_id: str):
+            return [{
+                "document_id": "doc-001", "file_name": "notes.pdf",
+                "storage_bucket": bucket, "storage_key": key,
+            }]
+
+    monkeypatch.setattr(document_api, "get_database", lambda: StubDatabase())
+    monkeypatch.setattr(document_api, "get_storage", lambda: type("Storage", (), {
+        "document_link": lambda self, key: "https://test-account.r2.cloudflarestorage.com/mynotebook/" + key,
+    })())
+    http_response = Response()
+    response = document_api.get_chat_history("user-001", "chat-001", http_response)
+    assert response["data"]["documents"][0]["document_url"] == expected
+    assert http_response.headers["cache-control"] == "private, no-store"
+    link = response["data"]["documents"][0]["r2_url"]
+    assert bool(link) == bool(expected)
+    if link:
+        assert link.startswith("https://test-account.r2.cloudflarestorage.com/mynotebook/")
 
 
 def test_get_chat_history_returns_404_when_missing(monkeypatch) -> None:

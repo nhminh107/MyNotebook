@@ -39,7 +39,11 @@ Citation validation checks source membership, not whether a source semantically
 supports every claim. Code blocks and inline code are excluded from validation.
 
 The UI renders recognized markers as clickable references and lists only cited
-sources. Unknown IDs are noninteractive. Source content and filenames are rendered
+documents, grouped by document ID. The "Nguồn" section shows one filename per
+document, without chunk IDs, excerpts or page rows. Archived documents in this
+section and the sidebar open the original R2 file in a new tab; hovering shows
+the filename and file link. Inline references open the original at the cited
+page when available. Unknown IDs are noninteractive. Source content and filenames are rendered
 as text, never executable HTML. Reloading a conversation uses its original source
 snapshots instead of running retrieval again. Snapshots contain the exact excerpt
 supplied to the model, including any context-budget truncation.
@@ -55,10 +59,17 @@ credentials derived from the verified API token. Object-scoped tokens are used
 through the S3 API rather than the Cloudflare REST object endpoints.
 
 New source snapshots include a `document_url`, for example
-`/documents/files/<document_id>#page=3`. The viewer offers "Mở tài liệu gốc";
-PDF links include the cited page and DOCX files download. File access requires
-the same signed session as retrieval and verifies SQL ownership. The application
-never publishes the bucket or exposes its token. Temporary local upload files
+`/documents/files/<document_id>#page=3`. Chat document responses also include
+`document_url` and a fresh `r2_url`, allowing old source snapshots to resolve
+their originals from the current chat's document metadata without reindexing
+Qdrant. With `S3_PUBLIC_URL`, the UI uses the permanent public bucket URL plus
+the object's stored key, without signing or expiry. Without that setting, it
+uses the direct Cloudflare S3 URL signed for GET for one hour.
+Reloading the chat refreshes these links; expiring URLs are never stored in SQL
+conversation snapshots or Qdrant. The stable `/documents/files/...` route checks
+the signed session and SQL ownership, then returns a non-cacheable 303 redirect
+to a fresh Cloudflare URL. PDF links retain the cited page fragment. The application
+never publishes the bucket or exposes its API token. Temporary local upload files
 are still removed after ingestion. Legacy snippets without originals remain
 viewable and have a null `document_url`.
 

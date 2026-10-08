@@ -1,4 +1,4 @@
-"""Private original-document storage using the Cloudflare R2 S3 API."""
+"""Original-document storage and public/private Cloudflare R2 links."""
 
 from collections.abc import Iterator
 from hashlib import sha256
@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Any, BinaryIO
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 from uuid import UUID
 
@@ -19,6 +19,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 load_dotenv()
 
 R2_BUCKET = "mynotebook"
+DOCUMENT_LINK_SECONDS = 3600
 MAX_DOCUMENT_BYTES = 300_000_000
 READ_SIZE = 1024 * 1024
 DOCUMENT_CONTENT_TYPES = {
@@ -33,13 +34,22 @@ class StorageError(RuntimeError):
 
 
 class CloudflareR2:
-    """Upload originals and open authenticated streams from one private bucket."""
+    """Upload originals and resolve file links from one configured R2 bucket."""
 
     def __init__(self) -> None:
         self.bucket = R2_BUCKET
         self._account_id = os.getenv("CF_ACC_ID")
         self._api_key = os.getenv("S3_API_KEY")
         self._endpoint = os.getenv("S3_API_URL")
+        self.public_url = (os.getenv("S3_PUBLIC_URL") or "").strip().rstrip("/") or None
+        if self.public_url:
+            public = urlparse(self.public_url)
+            if (
+                public.scheme != "https" or not public.hostname
+                or public.username or public.password or public.query or public.fragment
+                or public.params or public.hostname.endswith(".r2.cloudflarestorage.com")
+            ):
+                raise ValueError("S3_PUBLIC_URL must be an HTTPS public bucket URL, not the S3 API endpoint.")
         self._client: Any = None
         if not self._account_id or not self._api_key:
             raise ValueError("S3_API_KEY and CF_ACC_ID are required for R2 storage.")
@@ -131,6 +141,18 @@ class CloudflareR2:
             "sha256": digest.hexdigest(),
             "etag": result.get("ETag"),
         }
+
+    def document_link(self, key: str) -> str:
+        """Join the public bucket URL and key, or sign a private read link."""
+        if self.public_url:
+            return f"{self.public_url}/{quote(key, safe='/')}"
+        try:
+            return self.client.generate_presigned_url(
+                "get_object", Params={"Bucket": self.bucket, "Key": key},
+                ExpiresIn=DOCUMENT_LINK_SECONDS, HttpMethod="GET",
+            )
+        except (BotoCoreError, ClientError) as exc:
+            raise StorageError("Unable to create an original-document R2 link.") from exc
 
     def open_document(self, key: str) -> BinaryIO:
         """Open an object only after the caller has checked document ownership."""

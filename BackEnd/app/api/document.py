@@ -8,9 +8,8 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
-from fastapi.responses import StreamingResponse
-from starlette.background import BackgroundTask
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi.responses import RedirectResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
@@ -25,7 +24,6 @@ from BackEnd.app.chatbot.agents import Agents
 from BackEnd.app.service.session_service import require_document_identity
 from BackEnd.app.service.r2_storage import (
     CloudflareR2, DOCUMENT_CONTENT_TYPES, MAX_DOCUMENT_BYTES, READ_SIZE, StorageError,
-    iter_document_bytes,
 )
 
 logger = logging.getLogger(__name__)
@@ -129,8 +127,8 @@ router = APIRouter(
 
 
 @router.get("/files/{document_id}")
-def get_document_file(document_id: str, request: Request) -> StreamingResponse:
-    """Stream an original file only to its authenticated document owner."""
+def get_document_file(document_id: str, request: Request) -> RedirectResponse:
+    """Authorize the owner, then open a fresh read-only Cloudflare R2 link."""
     try:
         row = get_database().select_document_for_user(
             document_id, request.state.user_id,
@@ -143,19 +141,12 @@ def get_document_file(document_id: str, request: Request) -> StreamingResponse:
         content_type = DOCUMENT_CONTENT_TYPES.get(row.get("type"))
         if content_type is None:
             raise HTTPException(status_code=415, detail="Unsupported document type.")
-        body = storage.open_document(row["storage_key"])
-        filename = Path(row.get("file_name") or "document").name
-        disposition = "attachment" if row["type"] == ".docx" else "inline"
-        return StreamingResponse(
-            iter_document_bytes(body), media_type=content_type,
+        return RedirectResponse(
+            storage.document_link(row["storage_key"]), status_code=303,
             headers={
-                "Content-Disposition": (
-                    f"{disposition}; filename*=UTF-8''{quote(filename, safe='')}"
-                ),
                 "Cache-Control": "private, no-store",
                 "X-Content-Type-Options": "nosniff",
             },
-            background=BackgroundTask(body.close),
         )
     except HTTPException:
         raise
@@ -190,7 +181,7 @@ def get_chat_histories(user_id: str):
 
 
 @router.get("/chats/{user_id}/{chat_id}")
-def get_chat_history(user_id: str, chat_id: str):
+def get_chat_history(user_id: str, chat_id: str, response: Response = None):
     user_id = user_id.strip()
     chat_id = chat_id.strip()
     if not user_id or not chat_id:
@@ -209,6 +200,24 @@ def get_chat_history(user_id: str, chat_id: str):
             user_id=user_id,
             chat_id=chat_id,
         )
+        documents = [
+            {
+                **document,
+                "document_url": (
+                    f"/documents/files/{quote(document['document_id'], safe='')}"
+                    if document.get("storage_bucket") and document.get("storage_key")
+                    else None
+                ),
+                "r2_url": (
+                    get_storage().document_link(document["storage_key"])
+                    if document.get("storage_bucket") == "mynotebook" and document.get("storage_key")
+                    else None
+                ),
+            }
+            for document in documents
+        ]
+        if response is not None:
+            response.headers["Cache-Control"] = "private, no-store"
         return {
             "data": {
                 "chat": chat,

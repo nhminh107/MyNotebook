@@ -82,7 +82,7 @@ conversation in Supabase to support follow-up questions.
 |---|---|---|
 | `GET` | `/health` | Checks API availability |
 | `POST` | `/documents/upload` | Uploads and indexes a PDF, DOCX, or TXT file |
-| `GET` | `/documents/files/{document_id}` | Opens the authenticated owner's original document from R2 |
+| `GET` | `/documents/files/{document_id}` | Authorizes the owner and redirects to the configured public or signed R2 URL |
 | `POST` | `/documents/retrieval/stream` | Runs RAG question answering and returns SSE |
 | `POST` | `/documents/retrieval/agent-stream` | Runs Agent-based question answering for a Pro account |
 | `GET` | `/documents/chats/{user_id}` | Lists a user's conversations |
@@ -117,6 +117,7 @@ CF_API_KEY=YOUR_CLOUDFLARE_API_TOKEN
 CF_ACC_ID=YOUR_CLOUDFLARE_ACCOUNT_ID
 S3_API_KEY=YOUR_CLOUDFLARE_R2_API_TOKEN
 S3_API_URL=https://YOUR_CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com
+S3_PUBLIC_URL=https://pub-YOUR_BUCKET_ID.r2.dev
 ```
 
 `OCR_API_KEY` is only required for OCR. Supabase must provide tables compatible
@@ -124,8 +125,12 @@ with the current models: `user`, `document`, `chunks`, and `chat_history`. Never
 commit the `.env` file.
 
 `S3_API_KEY` must be a Cloudflare R2 API Token with Object Read & Write access to
-the existing private `mynotebook` bucket. Uploads archive originals there and
-citations link to an authenticated backend file route. Apply
+the existing `mynotebook` bucket. Uploads archive originals there. When
+`S3_PUBLIC_URL` is configured, citation and sidebar links simply append the stored
+object key to that public bucket URL, without signatures or expiry. Use the
+enabled public `r2.dev` URL or a custom domain, not the S3 API endpoint. Without
+this optional setting, private links are signed for one hour. The stable authenticated
+backend file route redirects old links to Cloudflare. Apply
 [`002_document_storage.sql`](BackEnd/migrations/002_document_storage.sql) before
 R2 uploads; see the [migration instructions](BackEnd/migrations/README.md).
 The backend uses boto3 with the R2 S3 endpoint specified by `S3_API_URL` (or the
@@ -206,6 +211,7 @@ The project uses the virtual environment at `BackEnd/.venv`:
 
 ```bash
 BackEnd/.venv/bin/uvicorn BackEnd.app.main:app \
+  --reload \
   --host 0.0.0.0 \
   --port 8000
 ```
@@ -263,7 +269,9 @@ own unit test suite completed all six tests successfully.
 - Structured retrieval results and protected SSE trace events expose native
   Qdrant IDs/scores. The live benchmark has not yet been adapted to consume them.
 - PDF, DOCX, and TXT extractors now share the `texts` chunk-list contract.
-  Original uploaded files are not retained; citations open stored snippets.
+  New uploads retain originals in R2 storage. Cited documents and sidebar
+  documents link to authenticated originals; legacy files without R2 metadata
+  do not have an original-file link.
 - `TextInputProcessor` currently creates a `Document` without the required
   `chat_id`; the corresponding test fails.
 - The router model was saved with scikit-learn 1.8.0, while the current environment

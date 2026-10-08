@@ -26,6 +26,7 @@ from BackEnd.app.service.session_service import SESSION_COOKIE, session_secret
 
 @pytest.fixture
 def storage(monkeypatch):
+    monkeypatch.delenv("S3_PUBLIC_URL", raising=False)
     monkeypatch.setenv("S3_API_KEY", "test-r2-token")
     monkeypatch.setenv("CF_ACC_ID", "test-account")
     monkeypatch.setenv("S3_API_URL", "https://test-account.r2.cloudflarestorage.com")
@@ -60,6 +61,56 @@ def test_r2_requires_credentials(storage, monkeypatch, name):
     monkeypatch.delenv(name)
     with pytest.raises(ValueError, match="S3_API_KEY and CF_ACC_ID"):
         CloudflareR2()
+
+
+@pytest.mark.parametrize("base", ["https://pub-example.r2.dev", "https://files.example.com/assets/"])
+def test_public_document_link_joins_base_and_key_without_signing(monkeypatch, base):
+    monkeypatch.setenv("CF_ACC_ID", "test-account")
+    monkeypatch.setenv("S3_API_KEY", "test-r2-token")
+    monkeypatch.setenv("S3_API_URL", "https://test-account.r2.cloudflarestorage.com")
+    monkeypatch.setenv("S3_PUBLIC_URL", base)
+    storage = CloudflareR2()
+    assert storage.document_link("documents/Ghi chú.pdf") == base.rstrip("/") + "/documents/Ghi%20ch%C3%BA.pdf"
+    assert storage._client is None
+
+
+@pytest.mark.parametrize("url", [
+    "http://files.example.com", "https://user:password@files.example.com",
+    "https://files.example.com?token=example", "https://files.example.com#fragment",
+    "https://test-account.r2.cloudflarestorage.com/mynotebook",
+])
+def test_public_bucket_url_rejects_invalid_configuration(storage, monkeypatch, url):
+    monkeypatch.setenv("S3_PUBLIC_URL", url)
+    with pytest.raises(ValueError, match="S3_PUBLIC_URL"):
+        CloudflareR2()
+
+
+def test_document_link_signs_only_a_get_for_one_hour(storage):
+    calls = []
+
+    def sign(operation, **kwargs):
+        calls.append((operation, kwargs))
+        return "https://test-account.r2.cloudflarestorage.com/mynotebook/documents/doc-1.pdf?test-signature=read-only"
+
+    storage._client = SimpleNamespace(generate_presigned_url=sign)
+    link = storage.document_link("documents/doc-1.pdf")
+    assert link.startswith("https://test-account.r2.cloudflarestorage.com/")
+    assert calls == [("get_object", {
+        "Params": {"Bucket": "mynotebook", "Key": "documents/doc-1.pdf"},
+        "ExpiresIn": 3600, "HttpMethod": "GET",
+    })]
+
+
+def test_document_link_reports_signing_failure(storage):
+    failure = EndpointConnectionError(endpoint_url="https://test-account.r2.cloudflarestorage.com")
+
+    def fail(*args, **kwargs):
+        raise failure
+
+    storage._client = SimpleNamespace(generate_presigned_url=fail)
+    with pytest.raises(StorageError) as caught:
+        storage.document_link("documents/doc-1.pdf")
+    assert caught.value.__cause__ is failure
 
 
 @pytest.mark.parametrize("content", [b"", b"too large"])
@@ -289,14 +340,13 @@ def file_client(monkeypatch):
             return {"document_id": "legacy", "user_id": user_id, "type": ".pdf"}
         return None
 
-    def open_document(key):
+    def document_link(key):
         assert key == "documents/doc-1.pdf"
-        body = BytesIO(b"%PDF-original")
-        bodies.append(body)
-        return body
+        bodies.append(key)
+        return "https://test-account.r2.cloudflarestorage.com/mynotebook/documents/doc-1.pdf?test-signature=read-only"
 
     monkeypatch.setattr(document_api, "get_database", lambda: SimpleNamespace(select_document_for_user=select))
-    monkeypatch.setattr(document_api, "get_storage", lambda: SimpleNamespace(bucket="mynotebook", open_document=open_document))
+    monkeypatch.setattr(document_api, "get_storage", lambda: SimpleNamespace(bucket="mynotebook", document_link=document_link))
     app = FastAPI()
     app.include_router(document_api.router)
     with TestClient(app) as client:
@@ -318,16 +368,14 @@ def test_original_file_requires_login_and_owner(file_client):
     assert bodies == []
 
 
-def test_original_file_streams_exact_bytes_without_exposing_credentials(file_client):
+def test_original_file_redirects_to_cloudflare_after_checking_owner(file_client):
     client, bodies = file_client
     sign_in(client)
-    response = client.get("/documents/files/doc-1")
-    assert response.status_code == 200
-    assert response.content == b"%PDF-original"
-    assert response.headers["content-type"] == "application/pdf"
+    response = client.get("/documents/files/doc-1", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "https://test-account.r2.cloudflarestorage.com/mynotebook/documents/doc-1.pdf?test-signature=read-only"
     assert response.headers["cache-control"] == "private, no-store"
-    assert response.headers["content-disposition"].startswith("inline; filename*=UTF-8''Ghi%20")
-    assert bodies[0].closed
+    assert bodies == ["documents/doc-1.pdf"]
 
 
 def test_legacy_document_without_original_returns_404(file_client):

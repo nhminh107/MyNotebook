@@ -121,6 +121,8 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
 .upload-status.is-success { color: var(--success); }
 .document-list { margin-top: 10px; }
 .document-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 10px; border-radius: 9px; background: var(--soft); font-size: 12px; }
+a.document-item:hover { background: var(--hover); }
+.document-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .document-type { color: var(--muted); font-size: 10px; font-weight: 500; text-transform: uppercase; }
 .sidebar-account { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; padding: 16px 14px; border-top: 1px solid var(--border); }
 .account-copy { display: flex; align-items: center; gap: 9px; min-width: 0; }
@@ -263,6 +265,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
 .sources-label { width: 100%; margin: 0; color: var(--muted); font-size: 12px; }
 .source-card { display: flex; flex-direction: column; gap: 5px; max-width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: transparent; text-align: left; }
 .source-card span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+a.source-card:hover { background: var(--hover); }
 .source-card small { color: var(--muted); font-size: 10px; }
 .source-dialog { position: fixed; inset: 16px 16px 16px auto; width: min(420px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); margin: 0; padding: 24px; border: 1px solid var(--border); border-radius: 20px; background: var(--canvas); color: var(--ink); box-shadow: 0 12px 60px #00000026; }
 .source-dialog[open] { display: flex; flex-direction: column; }
