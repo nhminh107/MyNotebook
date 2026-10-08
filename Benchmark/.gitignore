@@ -4,3 +4,4 @@ __pycache__/
 results/*.json
 results/*.md
 !results/.gitkeep
+workspace/

@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "documents": [
+    {
+      "id": "survey",
+      "path": "s11432-025-4676-4.pdf",
+      "pages": 40,
+      "description": "English multimodal evaluation survey",
+      "sha256": "acf0406585710e873519f45bdb52f9d790fcbfa0d6c803ade3519f155a7f9180"
+    },
+    {
+      "id": "tinyface",
+      "path": "bt_deeplearning_chuong6-7.pdf",
+      "pages": 16,
+      "description": "Vietnamese TinyFace manual exercises and answer checks",
+      "sha256": "5154ee93af7ac7cce209c7487aee75fad5c47412293b66f2cc4da37021b41746"
+    },
+    {
+      "id": "challenge",
+      "path": "ToanKe/Nghiên cứu chuyên sâu về HCMC AI Challenge trên Codabench và cổng AI Challenge TP.HCM.pdf",
+      "pages": 14,
+      "description": "Vietnamese AI Challenge research report; facts evaluated as stated in this report",
+      "sha256": "eb7d0494b647ddb264409e2563caf8d9e431bb40572d535353b93d98cd20c206"
+    },
+    {
+      "id": "english",
+      "path": "de-on-tap-he-lop-4-len-lop-5-mon-tieng-anh-de-so-1-co-loi-giai-chi-tiet-1654135141.pdf",
+      "pages": 3,
+      "description": "Primary English multiple-choice worksheet and answer key",
+      "sha256": "629370618033586ed7d96d0e0ee8608159ccadbf1f6743f81d194775ec3d36b5"
+    }
+  ]
+}

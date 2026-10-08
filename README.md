@@ -65,7 +65,7 @@ conversation in Supabase to support follow-up questions.
 | `BackEnd/app/api/` | Exposes document upload, chat history, and SSE retrieval endpoints |
 | `BackEnd/app/pipeline.py` | Coordinates ingestion, retrieval, LLM/Agent execution, and history updates |
 | `BackEnd/app/doc_extractor/` | Extracts PDF/DOCX/TXT files, sanitizes text, and performs recursive chunking |
-| `BackEnd/app/text_input/Embedding.py` | Lazy-loads `nhminh107/VietRAG-Embed` and encodes passages and queries |
+| `BackEnd/app/text_input/Embedding.py` | Calls Cloudflare BGE-M3 and normalizes 1024-dimensional passage/query vectors |
 | `BackEnd/app/database/qdrant_manager.py` | Implements Qdrant hybrid search with dense cosine, BM25, RRF, and tenant filters |
 | `BackEnd/app/database/sql_manager.py` | Accesses Supabase users, documents, chunks, and chat history |
 | `BackEnd/app/chatbot/chatbot.py` | Defines the RAG prompt, streams LLM output, and summarizes conversations |
@@ -221,53 +221,106 @@ before starting the application.
 
 ## Tests and benchmarks
 
+The real-document benchmark uses four local PDFs from `/home/nhminh/Documents`.
+The original files are read-only and are not copied into the repository. The
+[document manifest](Benchmark/datasets/documents.json) records SHA-256 checksums
+and physical PDF page counts; the [gold dataset](Benchmark/datasets/document_qa.json)
+contains 60 manually curated questions, reference answers, required facts and
+page-specific evidence quotes.
+
+| Source | Pages | Role |
+|---|---:|---|
+| `s11432-025-4676-4.pdf` | 40 | English technical survey, numbers, cross-language questions |
+| `bt_deeplearning_chuong6-7.pdf` | 16 | Vietnamese learning material, regularization, tables and answer checks |
+| AI Challenge research report in `ToanKe/` | 14 | Vietnamese retrieval report, task comparisons and scoring examples |
+| English summer revision worksheet, paper 1 | 3 | Questions and answer key on separate pages |
+
+There are 10 development cases and 50 held-out test cases. Test comprises 44
+answerable cases and 6 unanswerable cases; answerable categories include factual,
+paraphrase, cross-language, table lookup, answer key and multi-hop questions. Source
+facts are evaluated as stated in the supplied PDFs, including the AI-generated
+research report. Independent human review of the labels remains pending.
+
+Activate the required Conda environment before running Python:
+
 ```bash
-BackEnd/.venv/bin/python -m pytest -q BackEnd/app/tests
-BackEnd/.venv/bin/python Benchmark/run_benchmark.py offline
-BackEnd/.venv/bin/python Benchmark/run_benchmark.py local
-BackEnd/.venv/bin/python Benchmark/run_benchmark.py live \
-  --config Benchmark/config.example.toml
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate DL_Env
+python -m pytest -q Benchmark/tests BackEnd/app/tests/test_text_sanitizer.py
+python Benchmark/run_benchmark.py corpus --split test --k 5 --iterations 3
 ```
 
-The benchmark covers retrieval metrics, answer metrics, embedding cold/warm
-latency, router accuracy, extractors, TTFT, p50/p95/p99, and throughput. See
-[`Benchmark/README.md`](Benchmark/README.md) for metric definitions and result
-interpretation.
+For a CI gate, add `--fail-on-threshold`. Reports in `Benchmark/results/` contain
+JSON metrics, ranked evidence per question, category breakdowns and Markdown.
+`Benchmark/workspace/chunks.json` exposes stable local chunk IDs for exported
+prediction scoring. Both directories are ignored; PDFs are not added to Git.
 
-### Benchmark snapshot
+### Real-document baseline (2026-10-08)
 
-The latest local benchmark was executed on CPU with the real VietRAG embedding
-model. The retrieval fixture contains three focused passages and three matching
-queries; these results are intended as a reproducible component baseline rather
-than a production-scale quality claim.
+This is a **CPU lexical BM25 retrieval baseline**, using Poppler text-layer
+extraction and the application's real recursive chunker/tokenizer (400 tokens,
+60-token overlap). It does not measure the production Qdrant hybrid retriever or
+LLM. The whole 73-page corpus is indexed, including non-gold distractor pages.
+Quality is scored once per question; latency uses three measured repetitions
+with the first request and one warm-up excluded.
 
-| Area | Metric | Result |
-|---|---|---:|
-| Document processing | PDF/DOCX/TXT extraction mean | 5.00 ms |
-| Document processing | Extraction p95 | 6.40 ms |
-| Embedding | Model cold start | 4.19 s |
-| Embedding | Warm query mean | 4.63 ms |
-| Embedding | Warm query p50 | 4.52 ms |
-| Embedding | Warm query p95 | 5.06 ms |
-| Retrieval | Hit Rate@3 | 1.00 |
-| Retrieval | Recall@3 | 1.00 |
-| Retrieval | MRR | 1.00 |
+| Metric | Measured result |
+|---|---:|
+| Corpus | 4 PDFs / 73 pages / 275 chunks |
+| Evaluated questions | 50 test / 44 answerable |
+| Page Hit Rate@5 | 0.8409 |
+| Page Recall@5 | 0.8159 |
+| Page Precision@5 | 0.1727 |
+| MRR@5 | 0.7534 |
+| Page nDCG@5 | 0.6781 |
+| Exact evidence quote coverage@5 | 0.7045 |
+| Warm retrieval mean | 0.1138 ms |
+| Warm retrieval p95 | 0.1959 ms |
+| Corpus preparation, including tokenizer import | 8.63 s |
+| Index build | 18.23 ms |
 
-All three gold passages were ranked first for their corresponding queries, giving
-an MRR of 1.00. Once loaded, the embedding model processed a short query in about
-4.6 ms on average, while the extractor suite handled all three supported document
-formats with a p95 below 6.5 ms on the compact test fixtures.
+**Result: FAIL** against the initial Page Recall@5 gate of 0.75. Cross-language
+questions have page recall 0.00; multi-hop questions have 0.25. These values are
+recorded without tuning the held-out test set. Multiple chunks from the same
+page consume retrieval slots but receive relevance credit only once. Page-level
+relevance is weaker than exact evidence support, so quote coverage is reported
+separately. Negative cases are excluded from positive retrieval metrics and
+require actual answers to measure abstention.
 
-The deterministic offline suite also completed all five component checks,
-covering text sanitization, SSE formatting, retrieval and answer metric
-calculation, and the FAISS add/search/persist/rollback lifecycle. The benchmark's
-own unit test suite completed all six tests successfully.
+The [saved baseline report](Benchmark/baselines/corpus-bm25-20261008.md) contains
+all per-question rankings. Older perfect scores on three synthetic passages are
+historical smoke checks and do not represent this corpus or the current
+Cloudflare embedding architecture.
+
+### Answer quality and authenticated API evaluation
+
+The [benchmark guide](Benchmark/README.md) documents two additional paths:
+
+- `corpus --backend cloudflare-dense`: uses the actual BGE-M3 embedding adapter
+  with local cosine search; requires Cloudflare credentials and sends corpus
+  text to Workers AI. It does not reproduce Qdrant BM25/RRF.
+- `run_document_api.py`: logs into the current API with a session cookie and
+  evaluates streamed answers, native source pages, citations, TTFT and latency
+  on a dedicated chat containing exactly the four PDFs. Independent pre-indexed
+  chats per question are supported to avoid conversation-history contamination.
+- `corpus --predictions`: evaluates a complete exported run against verified
+  corpus chunk IDs, including EM, token F1, required-fact coverage, a lexical
+  faithfulness proxy, page citation precision/recall and separate abstention.
+
+Validation completed in `DL_Env`: 24 benchmark/sanitizer tests passed, Python
+syntax checks passed, and the real-document baseline executed successfully with
+its quality gate failing as reported. The API health probe returned HTTP 000
+(connection unavailable), so authenticated E2E, LLM quality, citation accuracy,
+TTFT and production hybrid retrieval have **not been measured**. This environment
+also lacks `pymupdf`, `qdrant_client` and `fastembed`; no packages were installed.
+PyTorch reported CUDA unavailable. The remote Cloudflare dense path was not run.
 
 ## Current status and limitations
 
 - The Query Router has a trained model but is not part of the current API flow.
-- Structured retrieval results and protected SSE trace events expose native
-  Qdrant IDs/scores. The live benchmark has not yet been adapted to consume them.
+- Structured source SSE events expose native document/page evidence. The new
+  document API benchmark consumes them; protected retrieval traces expose ranking
+  diagnostics separately. End-to-end results remain unverified until the API runs.
 - PDF, DOCX, and TXT extractors now share the `texts` chunk-list contract.
   New uploads retain originals in R2 storage. Cited documents and sidebar
   documents link to authenticated originals; legacy files without R2 metadata

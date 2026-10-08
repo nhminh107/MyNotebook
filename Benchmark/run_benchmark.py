@@ -22,7 +22,7 @@ from rag_benchmark.report import write_report
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="MyNotebook RAG quality and performance benchmark")
-    parser.add_argument("suite", choices=("offline", "local", "live"))
+    parser.add_argument("suite", choices=("offline", "local", "live", "corpus"))
     parser.add_argument("--config", type=Path, default=BENCHMARK_DIR / "config.example.toml")
     parser.add_argument("--dataset", type=Path)
     parser.add_argument("--output-dir", type=Path, default=BENCHMARK_DIR / "results")
@@ -32,6 +32,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-upload", action="store_true")
     parser.add_argument("--include-auth", action="store_true")
     parser.add_argument("--fail-on-threshold", action="store_true")
+    parser.add_argument("--documents-dir", type=Path, default=Path("/home/nhminh/Documents"))
+    parser.add_argument("--manifest", type=Path, default=BENCHMARK_DIR / "datasets" / "documents.json")
+    parser.add_argument("--split", choices=("dev", "test", "all"), default="test")
+    parser.add_argument("--backend", choices=("bm25", "cloudflare-dense"), default="bm25")
+    parser.add_argument("--predictions", type=Path)
+    parser.add_argument("--workspace", type=Path, default=BENCHMARK_DIR / "workspace")
     return parser.parse_args()
 
 
@@ -42,12 +48,23 @@ def load_config(path: Path) -> dict:
 
 def main() -> int:
     args = parse_args()
+    if args.k < 1:
+        raise SystemExit("--k must be at least 1")
     if args.iterations is not None and args.iterations < 1:
         raise SystemExit("--iterations must be at least 1")
     if args.concurrency is not None and args.concurrency < 1:
         raise SystemExit("--concurrency must be at least 1")
 
-    if args.suite == "offline":
+    if args.suite == "corpus":
+        from rag_benchmark.corpus import run_corpus
+
+        report = run_corpus(
+            args.manifest, args.dataset or BENCHMARK_DIR / "datasets" / "document_qa.json",
+            args.documents_dir, split=args.split, backend=args.backend, k=args.k,
+            iterations=args.iterations or 3, predictions_path=args.predictions,
+            workspace=args.workspace,
+        )
+    elif args.suite == "offline":
         report = run_offline(iterations=args.iterations or 50, k=args.k)
     elif args.suite == "local":
         dataset = args.dataset or BENCHMARK_DIR / "datasets" / "router_eval.jsonl"

@@ -1,0 +1,11 @@
+[document_api]
+base_url = "http://127.0.0.1:8000"
+user_id = "YOUR_BENCHMARK_USER_ID"
+chat_id = "YOUR_DEDICATED_PREINDEXED_CHAT_ID"
+timeout_seconds = 120.0
+
+# Upload exactly the four documents from datasets/documents.json through the UI
+# before running. Login credentials come from BENCHMARK_USERNAME/PASSWORD env.
+# For independent requests, define a distinct pre-indexed chat for EVERY case:
+# [document_api.case_chat_ids]
+# "survey-03" = "YOUR_ISOLATED_CHAT_ID"

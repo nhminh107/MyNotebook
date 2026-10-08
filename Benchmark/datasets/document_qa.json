@@ -1,0 +1,1171 @@
+{
+  "version": "1.0.0",
+  "annotation": "Assistant-curated and exact-quote verified against local PDFs; independent human semantic review pending. Physical PDF pages, not printed page labels.",
+  "cases": [
+    {
+      "id": "survey-01",
+      "split": "dev",
+      "category": "factual",
+      "question": "What is the title of the multimodal evaluation survey?",
+      "reference_answer": "Large multimodal models evaluation: a survey",
+      "required_facts": [
+        "Large multimodal models evaluation"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 1,
+          "quote": "Large multimodal models evaluation: a survey"
+        }
+      ]
+    },
+    {
+      "id": "survey-02",
+      "split": "dev",
+      "category": "factual",
+      "question": "Khảo sát LMM được đăng trên tạp chí nào?",
+      "reference_answer": "Science China Information Sciences",
+      "required_facts": [
+        "Science China",
+        "Information Sciences"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 1,
+          "quote": "Information Sciences"
+        }
+      ]
+    },
+    {
+      "id": "survey-03",
+      "split": "test",
+      "category": "cross_language",
+      "question": "Theo phần abstract của khảo sát LMM, hai trục đánh giá chính là gì?",
+      "reference_answer": "Multimodal understanding and generation.",
+      "required_facts": [
+        "understanding",
+        "generation"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 1,
+          "quote": "two main axes: multimodal evaluation for un-\nderstanding and generation"
+        }
+      ]
+    },
+    {
+      "id": "survey-04",
+      "split": "test",
+      "category": "factual",
+      "question": "According to the LMM survey abstract, which four output modalities organize generation evaluation?",
+      "reference_answer": "Image, video, audio, and 3D content.",
+      "required_facts": [
+        "image",
+        "video",
+        "audio",
+        "3D"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 1,
+          "quote": "including image, video,\naudio, and 3D content"
+        }
+      ]
+    },
+    {
+      "id": "survey-05",
+      "split": "test",
+      "category": "factual",
+      "question": "How many tasks does LAMM bridge across 2D and 3D in the survey?",
+      "reference_answer": "12 tasks.",
+      "required_facts": [
+        "12"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 9,
+          "quote": "LAMM [142] bridges 2D and 3D with 12 tasks"
+        }
+      ]
+    },
+    {
+      "id": "survey-06",
+      "split": "test",
+      "category": "factual",
+      "question": "How many subtasks does MME incorporate according to the survey?",
+      "reference_answer": "14 subtasks.",
+      "required_facts": [
+        "14"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 9,
+          "quote": "MME [143] incorporates 14 subtasks"
+        }
+      ]
+    },
+    {
+      "id": "survey-07",
+      "split": "test",
+      "category": "paraphrase",
+      "question": "What does MMBench do to stabilize grading?",
+      "reference_answer": "It converts free-form responses into multiple-choice format.",
+      "required_facts": [
+        "free form",
+        "multiple choice"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 9,
+          "quote": "MMBench [144] stabilizes grading by converting\nfree-form responses into multiple-choice format"
+        }
+      ]
+    },
+    {
+      "id": "survey-08",
+      "split": "test",
+      "category": "cross_language",
+      "question": "Khảo sát mô tả Video-MME có bao nhiêu video, giờ và cặp QA?",
+      "reference_answer": "900 videos, 254 hours, 2.7k QA pairs.",
+      "required_facts": [
+        "900",
+        "254",
+        "2.7k"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 9,
+          "quote": "900 videos spanning 254 h and\n2.7k QA pairs"
+        }
+      ]
+    },
+    {
+      "id": "survey-09",
+      "split": "test",
+      "category": "factual",
+      "question": "According to the survey, how many datasets and task categories does AudioBench aggregate?",
+      "reference_answer": "26 datasets across eight task categories.",
+      "required_facts": [
+        "26",
+        "eight"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 9,
+          "quote": "AudioBench [159] aggregates 26 datasets,\nincluding seven newly compiled corpora, across eight task categories"
+        }
+      ]
+    },
+    {
+      "id": "survey-10",
+      "split": "test",
+      "category": "cross_language",
+      "question": "Theo survey, EXAMS-V phủ bao nhiêu lĩnh vực học đường và ngôn ngữ?",
+      "reference_answer": "20 school disciplines and 11 languages.",
+      "required_facts": [
+        "20",
+        "11"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 10,
+          "quote": "20 school disciplines, 11 languages"
+        }
+      ]
+    },
+    {
+      "id": "survey-11",
+      "split": "test",
+      "category": "factual",
+      "question": "How many questions, subjects and subfields does MMMU cover in the survey?",
+      "reference_answer": "11.5k questions across 30 subjects and 183 subfields.",
+      "required_facts": [
+        "11.5k",
+        "30",
+        "183"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 10,
+          "quote": "30 subjects and 183 subfields"
+        }
+      ]
+    },
+    {
+      "id": "survey-12",
+      "split": "test",
+      "category": "factual",
+      "question": "What is the size of HLE at the human knowledge frontier according to this survey?",
+      "reference_answer": "2.5k questions.",
+      "required_facts": [
+        "2.5k"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 10,
+          "quote": "comprising 2.5k questions"
+        }
+      ]
+    },
+    {
+      "id": "tinyface-01",
+      "split": "dev",
+      "category": "factual",
+      "question": "Theo quy tắc bài tập TinyFace, đạo hàm ReLU tại đúng 0 được quy ước thế nào?",
+      "reference_answer": "Đạo hàm bằng 0.",
+      "required_facts": [
+        "0"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 2,
+          "quote": "Với ReLU tại đúng 0, trong bài này quy ước đạo hàm bằng 0."
+        }
+      ]
+    },
+    {
+      "id": "tinyface-02",
+      "split": "dev",
+      "category": "factual",
+      "question": "Bài tập TinyFace quy định có được dùng PyTorch thay phần trình bày tay không?",
+      "reference_answer": "Không; PyTorch chỉ dùng để xác minh ở vòng 3.",
+      "required_facts": [
+        "xác minh"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 2,
+          "quote": "Vòng 3: dùng PyTorch để xác minh; không dùng PyTorch thay cho phần trình bày tay."
+        }
+      ]
+    },
+    {
+      "id": "tinyface-03",
+      "split": "test",
+      "category": "factual",
+      "question": "Trong TinyFace-4x4, nhãn lớp 0 và lớp 1 biểu thị gì?",
+      "reference_answer": "0 là không phải khuôn mặt; 1 là khuôn mặt.",
+      "required_facts": [
+        "0",
+        "1",
+        "khuôn mặt"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 2,
+          "quote": "0 = không phải khuôn mặt,                 1 = khuôn mặt."
+        }
+      ]
+    },
+    {
+      "id": "tinyface-04",
+      "split": "test",
+      "category": "factual",
+      "question": "Ảnh xám đầu vào TinyFace có kích thước và giá trị nào?",
+      "reference_answer": "Ma trận 4 × 4 có giá trị 0, 1, 2.",
+      "required_facts": [
+        "4",
+        "0",
+        "1",
+        "2"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 2,
+          "quote": "Mỗi ảnh xám là một ma trận 4 × 4 có giá trị 0, 1, 2."
+        }
+      ]
+    },
+    {
+      "id": "tinyface-05",
+      "split": "test",
+      "category": "paraphrase",
+      "question": "Phần B của TinyFace giải thích dấu âm trong cross-entropy xuất phát từ đâu?",
+      "reference_answer": "Đổi maximize log-likelihood thành minimize negative log-likelihood.",
+      "required_facts": [
+        "maximize",
+        "minimize",
+        "negative log likelihood"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 4,
+          "quote": "do đổi maximize\n       log-likelihood thành minimize negative log-likelihood"
+        }
+      ]
+    },
+    {
+      "id": "tinyface-06",
+      "split": "test",
+      "category": "factual",
+      "question": "Phép augmentation E1 tạo ảnh mới bằng cách nào?",
+      "reference_answer": "Dịch ảnh sang phải một cột, phần trống điền 0.",
+      "required_facts": [
+        "sang phải",
+        "một cột",
+        "0"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 7,
+          "quote": "sang phải một cột, phần trống điền 0."
+        }
+      ]
+    },
+    {
+      "id": "tinyface-07",
+      "split": "test",
+      "category": "factual",
+      "question": "Trong bài tập TinyFace, gradient qua nhiều nhánh phải xử lý thế nào?",
+      "reference_answer": "Cộng gradient từ mọi nhánh.",
+      "required_facts": [
+        "cộng gradient",
+        "mọi nhánh"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 2,
+          "quote": "Khi đạo hàm đi qua nhiều nhánh, phải cộng gradient từ mọi nhánh."
+        }
+      ]
+    },
+    {
+      "id": "tinyface-08",
+      "split": "test",
+      "category": "table_lookup",
+      "question": "Trong bài TinyFace, checkpoint tốt nhất ở epoch nào và patience 2 dừng ở đâu?",
+      "reference_answer": "Best checkpoint ở epoch 5, dừng sau epoch 7, khôi phục epoch 5.",
+      "required_facts": [
+        "epoch 5",
+        "epoch 7"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 16,
+          "quote": "Best checkpoint ở epoch 5. Với patience 2, dừng sau epoch 7 và khôi phục epoch 5."
+        }
+      ]
+    },
+    {
+      "id": "tinyface-09",
+      "split": "test",
+      "category": "factual",
+      "question": "Đáp án TinyFace cho biết khi dropout feature mạnh, gradient feature phụ lớn hơn khoảng bao nhiêu lần?",
+      "reference_answer": "Khoảng 303 lần.",
+      "required_facts": [
+        "303"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 16,
+          "quote": "Gradient của feature phụ lớn hơn khoảng 303 lần"
+        }
+      ]
+    },
+    {
+      "id": "tinyface-10",
+      "split": "test",
+      "category": "paraphrase",
+      "question": "Theo diễn giải phần G2 TinyFace, dropout feature mạnh làm loss và gradient feature thay thế thay đổi ra sao?",
+      "reference_answer": "Loss tăng và tạo gradient lớn cho các feature thay thế.",
+      "required_facts": [
+        "loss tăng",
+        "gradient lớn"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 9,
+          "quote": "làm loss tăng và tạo\n  gradient lớn cho các feature thay thế."
+        }
+      ]
+    },
+    {
+      "id": "tinyface-11",
+      "split": "test",
+      "category": "table_lookup",
+      "question": "Trong phần H3 TinyFace, ba xác suất lớp 1 của ensemble là gì?",
+      "reference_answer": "0.90, 0.60, 0.30.",
+      "required_facts": [
+        "0.90",
+        "0.60",
+        "0.30"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 10,
+          "quote": "p1 = 0.90,       p2 = 0.60,      p3 = 0.30."
+        }
+      ]
+    },
+    {
+      "id": "tinyface-12",
+      "split": "test",
+      "category": "paraphrase",
+      "question": "Bài H3 TinyFace nêu điều kiện về tương quan lỗi để ensemble hữu ích là gì?",
+      "reference_answer": "Lỗi các model không hoàn toàn tương quan.",
+      "required_facts": [
+        "không hoàn toàn tương quan"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 10,
+          "quote": "lỗi các model không hoàn toàn tương quan."
+        }
+      ]
+    },
+    {
+      "id": "challenge-01",
+      "split": "dev",
+      "category": "factual",
+      "question": "Theo báo cáo AI Challenge, Codabench competitions/10187 là cổng mùa nào và bảng nào?",
+      "reference_answer": "HCMC AI Challenge 2025 Group A.",
+      "required_facts": [
+        "2025",
+        "Group A"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 1,
+          "quote": "HCMC AI Challenge 2025 (Group A)"
+        }
+      ]
+    },
+    {
+      "id": "challenge-02",
+      "split": "dev",
+      "category": "factual",
+      "question": "Báo cáo AI Challenge cho biết có bao nhiêu đội chung kết, chia Group A và B thế nào?",
+      "reference_answer": "80 đội, gồm 56 đội Group A và 24 đội Group B.",
+      "required_facts": [
+        "80",
+        "56",
+        "24"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 2,
+          "quote": "80 đội vào chung kết, trong đó 56 đội\nGroup A và 24 đội Group B."
+        }
+      ]
+    },
+    {
+      "id": "challenge-03",
+      "split": "test",
+      "category": "factual",
+      "question": "Theo báo cáo AI Challenge, dataset 2025 có bao nhiêu video, giờ và chương trình TV?",
+      "reference_answer": "1478 video, 324 giờ, 9 chương trình TV.",
+      "required_facts": [
+        "1478",
+        "324",
+        "9"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 1,
+          "quote": "1478 video, 324 giờ, 9 chương\ntrình TV"
+        }
+      ]
+    },
+    {
+      "id": "challenge-04",
+      "split": "test",
+      "category": "factual",
+      "question": "Theo báo cáo AI Challenge, bốn dạng truy vấn vận hành là gì?",
+      "reference_answer": "KIS, VKIS, VQA, TRAKE.",
+      "required_facts": [
+        "KIS",
+        "VKIS",
+        "VQA",
+        "TRAKE"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 1,
+          "quote": "4 dạng truy vấn vận hành: KIS, VKIS, VQA và TRAKE."
+        }
+      ]
+    },
+    {
+      "id": "challenge-05",
+      "split": "test",
+      "category": "paraphrase",
+      "question": "Báo cáo AI Challenge giải thích vì sao có bài báo chỉ nói 3 nhóm tác vụ?",
+      "reference_answer": "VKIS được gộp vào họ KIS.",
+      "required_facts": [
+        "VKIS",
+        "KIS"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 4,
+          "quote": "3 tasks” vì gộp VKIS vào KIS"
+        }
+      ]
+    },
+    {
+      "id": "challenge-06",
+      "split": "test",
+      "category": "factual",
+      "question": "Theo báo cáo AI Challenge, KIS có bao nhiêu phút và gợi ý văn bản?",
+      "reference_answer": "5 phút và 5 textual hints, cung cấp dần mỗi phút.",
+      "required_facts": [
+        "5 phút",
+        "5"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 4,
+          "quote": "trong vòng 5 phút, với 5 textual hints"
+        }
+      ]
+    },
+    {
+      "id": "challenge-07",
+      "split": "test",
+      "category": "factual",
+      "question": "Theo báo cáo AI Challenge, VKIS cho xem clip dài bao lâu và phải tìm lại trong bao lâu?",
+      "reference_answer": "Clip 20 giây, tìm lại trong 4 phút.",
+      "required_facts": [
+        "20 giây",
+        "4 phút"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 4,
+          "quote": "một đoạn video 20 giây và phải tìm lại cùng khoảnh khắc trong 4 phút"
+        }
+      ]
+    },
+    {
+      "id": "challenge-08",
+      "split": "test",
+      "category": "factual",
+      "question": "Theo báo cáo AI Challenge, sơ tuyển VQA cần những thành phần nào cùng khớp để đúng?",
+      "reference_answer": "Video, frame và answer cùng khớp.",
+      "required_facts": [
+        "video",
+        "frame",
+        "answer"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 5,
+          "quote": "video, frame, và answer cùng khớp."
+        }
+      ]
+    },
+    {
+      "id": "challenge-09",
+      "split": "test",
+      "category": "paraphrase",
+      "question": "Báo cáo mô tả TRAKE yêu cầu sắp xếp key moments thế nào?",
+      "reference_answer": "Xác định frame cho nhiều key moments rồi xếp đúng thứ tự.",
+      "required_facts": [
+        "frame",
+        "key moments",
+        "thứ tự"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 5,
+          "quote": "nhiều key moments của một hành động, rồi xếp theo đúng thứ tự."
+        }
+      ]
+    },
+    {
+      "id": "challenge-10",
+      "split": "test",
+      "category": "table_lookup",
+      "question": "Theo bảng minh họa AI Challenge, kết quả đúng đầu tiên tại rank 17 có Final Score bao nhiêu?",
+      "reference_answer": "0.6.",
+      "required_facts": [
+        "0.6"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 6,
+          "quote": "rank 17"
+        }
+      ]
+    },
+    {
+      "id": "challenge-11",
+      "split": "test",
+      "category": "table_lookup",
+      "question": "Theo bảng minh họa AI Challenge, kết quả đúng đầu tiên tại rank 70 có Final Score bao nhiêu?",
+      "reference_answer": "0.2.",
+      "required_facts": [
+        "0.2"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 6,
+          "quote": "rank 70"
+        }
+      ]
+    },
+    {
+      "id": "challenge-12",
+      "split": "test",
+      "category": "table_lookup",
+      "question": "Trong ví dụ VQA tái chế pin của báo cáo AI Challenge, chuỗi siêu thị đúng là gì?",
+      "reference_answer": "Aldi.",
+      "required_facts": [
+        "Aldi"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "challenge",
+          "page": 5,
+          "quote": "Chuỗi siêu thị nào xuất hiện trong clip?"
+        }
+      ]
+    },
+    {
+      "id": "english-01",
+      "split": "dev",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 1 “Let’s ________ hello to the teacher.” chọn phương án và từ nào?",
+      "reference_answer": "B. say",
+      "required_facts": [
+        "B",
+        "say"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "1. B"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "Let’s ________ hello to the teacher."
+        }
+      ]
+    },
+    {
+      "id": "english-02",
+      "split": "dev",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 2 “There is ________ dog in my house.” chọn phương án và từ nào?",
+      "reference_answer": "A. a",
+      "required_facts": [
+        "A",
+        "a"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "2. A"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "There is ________ dog in my house."
+        }
+      ]
+    },
+    {
+      "id": "english-03",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 3 “Give ________ a pen, please.” chọn phương án và từ nào?",
+      "reference_answer": "C. me",
+      "required_facts": [
+        "C",
+        "me"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "3. C"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "Give ________ a pen, please."
+        }
+      ]
+    },
+    {
+      "id": "english-04",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 4 “I ________ reading a book.” chọn phương án và từ nào?",
+      "reference_answer": "C. am",
+      "required_facts": [
+        "C",
+        "am"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "4. C"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "I ________ reading a book."
+        }
+      ]
+    },
+    {
+      "id": "english-05",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 5 “This cake ________ for you, Mary.” chọn phương án và từ nào?",
+      "reference_answer": "A. is",
+      "required_facts": [
+        "A",
+        "is"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "5. A"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "This cake ________ for you, Mary."
+        }
+      ]
+    },
+    {
+      "id": "english-06",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 6 “Tommy is my friend. He is a ________ at Quang Trung Primary School.” chọn phương án và từ nào?",
+      "reference_answer": "D. student",
+      "required_facts": [
+        "D",
+        "student"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "6. D"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "Tommy is my friend. He is a ________ at Quang Trung Primary School."
+        }
+      ]
+    },
+    {
+      "id": "english-07",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 7 “Her house is ________ big.” chọn phương án và từ nào?",
+      "reference_answer": "A. very",
+      "required_facts": [
+        "A",
+        "very"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "7. A"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "Her house is ________ big."
+        }
+      ]
+    },
+    {
+      "id": "english-08",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 8 “Yoko is ________ Japan.” chọn phương án và từ nào?",
+      "reference_answer": "D. from",
+      "required_facts": [
+        "D",
+        "from"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "8. D"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "Yoko is ________ Japan."
+        }
+      ]
+    },
+    {
+      "id": "english-09",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 9 “August is the eighth month ________ the year.” chọn phương án và từ nào?",
+      "reference_answer": "C. of",
+      "required_facts": [
+        "C",
+        "of"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "9. C"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "August is the eighth month ________ the year."
+        }
+      ]
+    },
+    {
+      "id": "english-10",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 10 “Draw ________ picture, please.” chọn phương án và từ nào?",
+      "reference_answer": "A. a",
+      "required_facts": [
+        "A",
+        "a"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "10. A"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "Draw ________ picture, please."
+        }
+      ]
+    },
+    {
+      "id": "english-11",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 11 “I ________ watching television.” chọn phương án và từ nào?",
+      "reference_answer": "A. am",
+      "required_facts": [
+        "A",
+        "am"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "11. A"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "I ________ watching television."
+        }
+      ]
+    },
+    {
+      "id": "english-12",
+      "split": "test",
+      "category": "answer_key",
+      "question": "Theo đề tiếng Anh số 1 và hướng dẫn giải, câu 12 “There ________ two boys in my class.” chọn phương án và từ nào?",
+      "reference_answer": "B. are",
+      "required_facts": [
+        "B",
+        "are"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "12. B"
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "There ________ two boys in my class."
+        }
+      ]
+    },
+    {
+      "id": "multihop-01",
+      "split": "test",
+      "category": "multi_hop",
+      "question": "Theo survey và báo cáo AI Challenge, Video-MME có bao nhiêu video còn dataset AI Challenge 2025 có bao nhiêu video?",
+      "reference_answer": "Video-MME: 900 video; AI Challenge: 1478 video.",
+      "required_facts": [
+        "900",
+        "1478"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 9,
+          "quote": "900 videos spanning 254 h"
+        },
+        {
+          "document_id": "challenge",
+          "page": 1,
+          "quote": "1478 video, 324 giờ"
+        }
+      ]
+    },
+    {
+      "id": "multihop-02",
+      "split": "test",
+      "category": "multi_hop",
+      "question": "Trong TinyFace và báo cáo AI Challenge, checkpoint tốt nhất được chọn ở epoch nào và VQA cần những thành phần nào khớp?",
+      "reference_answer": "TinyFace: epoch 5; VQA: video, frame, answer.",
+      "required_facts": [
+        "epoch 5",
+        "video",
+        "frame",
+        "answer"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "tinyface",
+          "page": 16,
+          "quote": "Best checkpoint ở epoch 5."
+        },
+        {
+          "document_id": "challenge",
+          "page": 5,
+          "quote": "video, frame, và answer cùng khớp."
+        }
+      ]
+    },
+    {
+      "id": "multihop-03",
+      "split": "test",
+      "category": "multi_hop",
+      "question": "Trong đề tiếng Anh số 1, câu về Japan và câu về August chọn từ nào tương ứng?",
+      "reference_answer": "Japan: from; August: of.",
+      "required_facts": [
+        "from",
+        "of"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "Yoko is ________ Japan."
+        },
+        {
+          "document_id": "english",
+          "page": 1,
+          "quote": "August is the eighth month"
+        },
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "8. D"
+        },
+        {
+          "document_id": "english",
+          "page": 3,
+          "quote": "9. C"
+        }
+      ]
+    },
+    {
+      "id": "multihop-04",
+      "split": "test",
+      "category": "multi_hop",
+      "question": "Theo survey LMM, MME có bao nhiêu subtasks và EXAMS-V bao nhiêu ngôn ngữ?",
+      "reference_answer": "MME: 14 subtasks; EXAMS-V: 11 languages.",
+      "required_facts": [
+        "14",
+        "11"
+      ],
+      "expected_abstain": false,
+      "evidence": [
+        {
+          "document_id": "survey",
+          "page": 9,
+          "quote": "MME [143] incorporates 14 subtasks"
+        },
+        {
+          "document_id": "survey",
+          "page": 10,
+          "quote": "20 school disciplines, 11 languages"
+        }
+      ]
+    },
+    {
+      "id": "negative-01",
+      "split": "dev",
+      "category": "unanswerable",
+      "question": "Theo các tài liệu, mật khẩu tài khoản Codabench của tác giả báo cáo là gì?",
+      "reference_answer": "Tài liệu không cung cấp thông tin này.",
+      "required_facts": [],
+      "expected_abstain": true,
+      "evidence": []
+    },
+    {
+      "id": "negative-02",
+      "split": "dev",
+      "category": "unanswerable",
+      "question": "Theo các tài liệu, GPU chính xác dùng huấn luyện TinyFace của tác giả có số serial nào?",
+      "reference_answer": "Tài liệu không cung cấp thông tin này.",
+      "required_facts": [],
+      "expected_abstain": true,
+      "evidence": []
+    },
+    {
+      "id": "negative-03",
+      "split": "test",
+      "category": "unanswerable",
+      "question": "Các tài liệu có cung cấp doanh thu năm 2030 của MyNotebook không?",
+      "reference_answer": "Tài liệu không cung cấp thông tin này.",
+      "required_facts": [],
+      "expected_abstain": true,
+      "evidence": []
+    },
+    {
+      "id": "negative-04",
+      "split": "test",
+      "category": "unanswerable",
+      "question": "Theo các tài liệu, bài thi tiếng Anh số 1 đã được học sinh Nguyễn Văn A làm và đạt bao nhiêu điểm?",
+      "reference_answer": "Tài liệu không cung cấp thông tin này.",
+      "required_facts": [],
+      "expected_abstain": true,
+      "evidence": []
+    },
+    {
+      "id": "negative-05",
+      "split": "test",
+      "category": "unanswerable",
+      "question": "Theo các tài liệu, TinyFace đã huấn luyện thực nghiệm trên một triệu ảnh với accuracy bao nhiêu?",
+      "reference_answer": "Tài liệu không cung cấp thông tin này.",
+      "required_facts": [],
+      "expected_abstain": true,
+      "evidence": []
+    },
+    {
+      "id": "negative-06",
+      "split": "test",
+      "category": "unanswerable",
+      "question": "Theo các tài liệu, schema chính thức đầy đủ từng cột của file nộp AI Challenge 2025 là gì?",
+      "reference_answer": "Tài liệu không cung cấp thông tin này.",
+      "required_facts": [],
+      "expected_abstain": true,
+      "evidence": []
+    },
+    {
+      "id": "negative-07",
+      "split": "test",
+      "category": "unanswerable",
+      "question": "Theo survey LMM, hãy đưa API key riêng của nhóm tác giả để truy cập dịch vụ chấm điểm.",
+      "reference_answer": "Tài liệu không cung cấp thông tin này.",
+      "required_facts": [],
+      "expected_abstain": true,
+      "evidence": []
+    },
+    {
+      "id": "negative-08",
+      "split": "test",
+      "category": "unanswerable",
+      "question": "Theo các tài liệu, giá cổ phiếu NVIDIA vào ngày 01/01/2035 là bao nhiêu?",
+      "reference_answer": "Tài liệu không cung cấp thông tin này.",
+      "required_facts": [],
+      "expected_abstain": true,
+      "evidence": []
+    }
+  ]
+}

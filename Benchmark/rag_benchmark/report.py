@@ -55,6 +55,25 @@ def write_report(report: dict, output_dir: Path) -> tuple[Path, Path]:
     for check in report["checks"]:
         detail = str(check.get("detail", "")).replace("|", "\\|").replace("\n", " ")
         lines.append(f"| {check['name']} | {check['status']} | {detail} |")
+    if report.get("suite") == "corpus":
+        metadata = report["metadata"]
+        lines.extend(["", "## Run configuration", ""])
+        for key in ("backend", "split", "k", "iterations", "dataset_version", "dataset_sha256", "extractor", "chunker", "quality_population", "limitations"):
+            lines.append(f"- {key}: {metadata[key]}")
+        lines.extend(["", "## Category breakdown", "", "| Category | Cases | Page recall | MRR |", "|---|---:|---:|---:|"])
+        for category, values in metadata["category_breakdown"].items():
+            lines.append(f"| {category} | {values['cases']} | {values['recall']:.4f} | {values['mrr']:.4f} |")
+        lines.extend(["", "## Per-question retrieval", "", "| Case | Category | MRR | Evidence coverage | Retrieved chunk IDs |", "|---|---|---:|---:|---|"])
+        for row in report["cases"]:
+            scores = row["scores"]
+            mrr = f"{scores['mrr']:.4f}" if scores else "N/A"
+            coverage = f"{scores['evidence_coverage']:.4f}" if scores else "N/A"
+            ids = ", ".join(hit["id"] for hit in row["hits"])
+            lines.append(f"| {row['id']} | {row['category']} | {mrr} | {coverage} | {ids} |")
+    elif report.get("suite") == "document-api":
+        lines.extend(["", "## Run configuration", ""])
+        for key in ("split", "k", "dataset_sha256", "history_mode", "note"):
+            lines.append(f"- {key}: {report['metadata'][key]}")
     markdown_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return json_path, markdown_path
 
@@ -75,4 +94,3 @@ def check_thresholds(metrics: dict[str, float], thresholds: dict[str, float]) ->
             "detail": f"actual={actual:.4f}, required {operator} {target:.4f}",
         })
     return checks
-
