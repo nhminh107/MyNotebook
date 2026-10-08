@@ -80,6 +80,7 @@ class StubQdrantClient:
             SimpleNamespace(id="new-point", score=0.5, payload={
                 "content": "new", "document_id": "doc-1", "chunk_id": "sql-chunk",
                 "file_name": "notes.pdf", "page": 4, "metadata_version": 2,
+                "document_url": "/documents/files/doc-1",
             }),
         ])
 
@@ -97,7 +98,9 @@ def test_native_rrf_returns_ids_scores_and_legacy_unknown_locations() -> None:
     assert results[0].chunk_id is None
     assert results[0].qdrant_point_id == "legacy-point"
     assert results[0].page is None
+    assert results[0].document_url is None
     assert results[1].chunk_id == "sql-chunk"
+    assert results[1].document_url == "/documents/files/doc-1"
     assert [result.score for result in results] == [0.7, 0.5]
     assert [result.retrieval_rank for result in results] == [1, 2]
     assert results[0].dense_rank is None
@@ -111,7 +114,8 @@ def test_native_rrf_returns_ids_scores_and_legacy_unknown_locations() -> None:
 
 def test_qdrant_writes_canonical_chunk_ids_and_metadata() -> None:
     instance = qdrant()
-    document = Document(document_id="doc-1", user_id="user-1", chat_id="chat-1", type=".pdf", file_name="notes.pdf")
+    document = Document(document_id="doc-1", user_id="user-1", chat_id="chat-1", type=".pdf", file_name="notes.pdf",
+                        storage_bucket="mynotebook", storage_key="documents/doc-1.pdf")
     chunk = Chunk(chunk_id=str(uuid4()), document_id="doc-1", content="evidence", page=3, chunk_index=4, ocr_used=True)
     instance.add(np.array([[0.1, 0.2]], dtype=np.float32), [chunk.content], "user-1", document, "chat-1", [chunk])
     batch = instance.client.calls[0]["points"]
@@ -119,6 +123,7 @@ def test_qdrant_writes_canonical_chunk_ids_and_metadata() -> None:
     assert batch.payloads[0]["page"] == 3
     assert batch.payloads[0]["chunk_id"] == chunk.chunk_id
     assert batch.payloads[0]["file_name"] == "notes.pdf"
+    assert batch.payloads[0]["document_url"] == "/documents/files/doc-1"
     with pytest.raises(ValueError, match="counts"):
         instance.add(np.array([]), [chunk.content], "user-1", document, "chat-1", [chunk])
     with pytest.raises(ValueError, match="unique"):

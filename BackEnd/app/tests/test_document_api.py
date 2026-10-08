@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 
 from BackEnd.app.api import document as document_api
+from BackEnd.app.database.sql_models import Document
 
 
 class StubPipeline:
@@ -28,18 +29,27 @@ class StubUploadPipeline:
         user_id: str,
         chat_id: str,
         file_name: str,
-    ) -> None:
+    ) -> Document:
         path = Path(doc_path)
         self.calls.append((path.suffix, user_id, chat_id, file_name, path.read_bytes()))
+        return Document(
+            document_id="doc-001", user_id=user_id, chat_id=chat_id,
+            type=path.suffix, file_name=file_name,
+            storage_bucket="mynotebook", storage_key="documents/doc-001.txt",
+        )
 
 
 class StubUploadFile:
     def __init__(self, filename: str, content: bytes) -> None:
         self.filename = filename
         self.content = content
+        self.position = 0
 
-    async def read(self) -> bytes:
-        return self.content
+    async def read(self, size: int = -1) -> bytes:
+        end = len(self.content) if size < 0 else self.position + size
+        content = self.content[self.position:end]
+        self.position += len(content)
+        return content
 
 
 def test_stream_routes_are_registered() -> None:
@@ -218,6 +228,8 @@ def test_upload_document_accepts_supported_extension(monkeypatch) -> None:
         "filename": "notes.txt",
         "user_id": "user-001",
         "chat_id": "chat-001",
+        "document_id": "doc-001",
+        "document_url": "/documents/files/doc-001",
     }
     assert pipeline.calls == [
         (".txt", "user-001", "chat-001", "notes.txt", b"retrieval notes")
@@ -241,3 +253,15 @@ def test_upload_document_rejects_unsupported_extension(monkeypatch) -> None:
     assert error.value.status_code == 400
     assert error.value.detail == "Unsupported file type: .csv"
     assert pipeline.calls == []
+
+
+@pytest.mark.parametrize("content,status", [(b"", 400), (b"oversized", 413)])
+def test_invalid_upload_size_is_rejected_before_pipeline(monkeypatch, content, status):
+    monkeypatch.setattr(document_api, "MAX_DOCUMENT_BYTES", 3)
+    monkeypatch.setattr(document_api, "get_pipeline", lambda: pytest.fail("Pipeline must not initialize"))
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(document_api.upload_document(
+            user_id="user-001", chat_id="chat-001",
+            file=StubUploadFile("notes.txt", content),
+        ))
+    assert error.value.status_code == status
