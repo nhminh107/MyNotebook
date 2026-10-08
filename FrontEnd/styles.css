@@ -60,6 +60,12 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .icon-button:hover { background: var(--hover); color: var(--ink); }
 .brand { display: inline-flex; align-items: center; gap: 10px; width: fit-content; font-size: 17px; font-weight: 600; letter-spacing: -0.5px; }
 .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 9px; background: var(--canvas); color: var(--ink); font-size: 17px; font-weight: 600; }
+.demo-notice { position: fixed; z-index: 40; top: 16px; right: 16px; display: flex; align-items: center; gap: 12px; width: min(460px, calc(100vw - 32px)); padding: 14px 16px; border: 1px solid #166534; border-radius: 12px; background: #15803d; color: #ffffff; box-shadow: 0 8px 28px #15803d33; }
+.demo-notice[hidden] { display: none; }
+.demo-notice p { min-width: 0; margin: 0; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.demo-notice .icon-button { color: inherit; }
+.demo-notice .icon-button:hover { background: #166534; }
+.demo-notice .icon-button:focus-visible { outline-color: #ffffff; }
 
 /* Authentication shares the quiet, neutral workspace palette. */
 .auth-screen { display: grid; grid-template-columns: 1fr 1fr; min-height: 100dvh; background: var(--canvas); }

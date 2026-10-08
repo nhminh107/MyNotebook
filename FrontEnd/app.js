@@ -17,6 +17,8 @@ const state = {
 };
 
 const elements = {
+  demoNotice: document.querySelector("#demo-notice"),
+  dismissDemoNotice: document.querySelector("#dismiss-demo-notice"),
   sourceDialog: document.querySelector("#source-dialog"),
   sourceTitle: document.querySelector("#source-title"),
   sourceLocation: document.querySelector("#source-location"),
@@ -1085,6 +1087,9 @@ elements.authTabs.forEach((tab) => {
   tab.addEventListener("click", () => setAuthMode(tab.dataset.authMode));
 });
 
+elements.dismissDemoNotice.addEventListener("click", () => {
+  elements.demoNotice.hidden = true;
+});
 elements.authForm.addEventListener("submit", handleAuthSubmit);
 elements.logoutButton.addEventListener("click", handleLogout);
 elements.newChatButton.addEventListener("click", () => {
